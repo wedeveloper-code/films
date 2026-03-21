@@ -56,10 +56,6 @@ $views_fmt = $views >= 1000
     ? round($views / 1000, 1) . 'K'
     : (string) $views;
 
-// Format price
-function kb_price(int $p): string {
-    return $p > 0 ? number_format($p) . '₽' : '—';
-}
 ?>
 <article class="movie-card" data-post-id="<?php echo esc_attr((string) $post_id); ?>">
 

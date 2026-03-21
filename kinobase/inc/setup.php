@@ -87,3 +87,12 @@ add_filter('body_class', function (array $classes): array {
     $classes[] = 'kinobase';
     return $classes;
 });
+
+/**
+ * Format price for display on movie cards.
+ * Defined here (not in template) to avoid redeclaration on each card.
+ */
+function kb_price(int $p): string
+{
+    return $p > 0 ? number_format($p) . '₽' : '—';
+}

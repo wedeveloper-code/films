@@ -30,17 +30,20 @@ get_header();
         <!-- Category blocks -->
         <div class="content-blocks">
             <?php
+            // Each section: try English slug first, then Russian name as fallback
             $sections = [
-                'films'  => __('Фильмы', 'kinobase'),
-                'series' => __('Сериалы', 'kinobase'),
-                'tv'     => __('Телепередачи', 'kinobase'),
-                'new'    => __('Новинки', 'kinobase'),
+                ['slug' => 'films',  'name' => 'Фильмы',       'label' => __('Фильмы', 'kinobase')],
+                ['slug' => 'series', 'name' => 'Сериалы',      'label' => __('Сериалы', 'kinobase')],
+                ['slug' => 'tv',     'name' => 'Телепередачи', 'label' => __('Телепередачи', 'kinobase')],
+                ['slug' => 'new',    'name' => 'Новинки',       'label' => __('Новинки', 'kinobase')],
             ];
 
             $block_index = 0;
 
-            foreach ($sections as $slug => $label) :
-                $cat = get_category_by_slug($slug);
+            foreach ($sections as $section) :
+                $label = $section['label'];
+                $cat   = get_category_by_slug($section['slug'])
+                      ?: get_term_by('name', $section['name'], 'category');
                 if (!$cat) continue;
 
                 $cat_link = get_category_link($cat->term_id);
