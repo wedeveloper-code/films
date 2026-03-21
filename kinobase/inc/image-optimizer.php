@@ -3,7 +3,7 @@
  * KinoBase Image Optimizer
  *
  * Auto-converts uploaded images to WebP and compresses to max 200KB.
- * Requires GD extension (available in PHP 8.3).
+ * Requires GD extension (available since PHP 8.0).
  *
  * @package KinoBase
  */

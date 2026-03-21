@@ -4,6 +4,7 @@
  *
  * @package KinoBase
  * @version 1.0.0
+ * @requires PHP 8.1+
  */
 
 declare(strict_types=1);
