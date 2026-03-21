@@ -96,3 +96,39 @@ function kb_price(int $p): string
 {
     return $p > 0 ? number_format($p) . '₽' : '—';
 }
+
+/**
+ * Fallback nav menu — outputs category links when no menu is assigned.
+ * Defined here (not in header.php) to prevent redeclaration if template is loaded twice.
+ */
+function kinobase_fallback_menu(): void
+{
+    $cats = [
+        ['slug' => 'films',  'name' => 'Фильмы'],
+        ['slug' => 'series', 'name' => 'Сериалы'],
+        ['slug' => 'tv',     'name' => 'Телепередачи'],
+        ['slug' => 'new',    'name' => 'Новинки'],
+    ];
+    foreach ($cats as $c) {
+        $cat = get_category_by_slug($c['slug'])
+            ?: get_term_by('name', $c['name'], 'category');
+        $url = $cat ? get_category_link($cat->term_id) : home_url('/');
+        echo '<a href="' . esc_url($url) . '">' . esc_html(__($c['name'], 'kinobase')) . '</a>';
+    }
+}
+
+/**
+ * Simple nav walker — outputs bare <a> links without extra <li> wrappers.
+ * Defined here (not in header.php) to prevent redeclaration if template is loaded twice.
+ */
+class Kinobase_Nav_Walker extends Walker_Nav_Menu
+{
+    public function start_el(&$output, $data_object, $depth = 0, $args = null, $id = 0): void
+    {
+        $item   = $data_object;
+        $class  = in_array('current-menu-item', (array) $item->classes, true) ? 'current-menu-item' : '';
+        $output .= '<a href="' . esc_url($item->url) . '"'
+            . ($class ? ' class="' . esc_attr($class) . '"' : '') . '>'
+            . esc_html($item->title) . '</a>';
+    }
+}
