@@ -1,0 +1,402 @@
+﻿<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>КиноТеатр - Смотреть фильмы онлайн</title>
+    <!-- В рабочей версии Tailwind нужно скомпилировать в локальный style.css -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#0f1115',
+                        darker: '#0a0b0d',
+                        brand: '#ff4d4d'
+                    },
+                    fontFamily: {
+                        // Используем системные шрифты, не требует загрузки
+                        sans: ['system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Базовые стили для светлой/темной темы */
+        body { transition: background-color 0.3s, color 0.3s; }
+        .gallery-container { position: relative; width: 100%; aspect-ratio: 2 / 3; overflow: hidden; border-radius: 0.5rem; }
+        .gallery-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.2s ease-in-out; }
+        .gallery-img.active { opacity: 1; }
+        .gallery-nav { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; z-index: 10; }
+        .gallery-nav-zone { flex: 1; height: 100%; }
+        
+        /* Стили для скроллбара */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #444; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-900 dark:bg-dark dark:text-gray-100 min-h-screen flex flex-col antialiased">
+
+    <!-- Шапка сайта -->
+    <header class="sticky top-0 z-50 bg-white/90 dark:bg-darker/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
+        <div class="max-w-[1600px] mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-8">
+                <a href="#" class="text-2xl font-black tracking-tighter text-brand">KINO<span class="text-gray-900 dark:text-white">BASE</span></a>
+                <nav class="hidden md:flex gap-6 text-sm font-medium">
+                    <a href="#" class="hover:text-brand transition-colors">Фильмы</a>
+                    <a href="#" class="hover:text-brand transition-colors">Сериалы</a>
+                    <a href="#" class="hover:text-brand transition-colors">Телепередачи</a>
+                    <a href="#" class="hover:text-brand transition-colors">Новинки</a>
+                </nav>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <button class="p-2 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-full transition-colors" aria-label="Поиск">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </button>
+                
+                <!-- Настройки / Профиль -->
+                <div class="relative group">
+                    <button class="p-2 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-full transition-colors flex items-center gap-2" aria-label="Настройки">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </button>
+                    <!-- Выпадающее меню -->
+                    <div class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 p-2">
+                        <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded">Войти</a>
+                        <a href="#" class="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded">Регистрация</a>
+                        <div class="border-t border-gray-200 dark:border-gray-800 my-1"></div>
+                        <button onclick="toggleTheme()" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded flex items-center justify-between">
+                            Тема
+                            <span id="theme-icon">🌙</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Основной контент -->
+    <main class="flex-grow w-full max-w-[1600px] mx-auto px-4 py-8">
+        
+        <!-- Заголовок H1 -->
+        <div class="mb-10">
+            <h1 class="text-3xl md:text-4xl font-bold tracking-tight flex flex-wrap items-baseline gap-2 md:gap-3">
+                Каталог видео
+                <span class="text-gray-500 dark:text-gray-400 text-lg md:text-xl font-normal">
+                    — всего в базе <span id="total-count" class="font-bold text-brand">14 892</span> видео
+                </span>
+            </h1>
+        </div>
+
+        <!-- Контейнер для блоков категорий (генерируется через JS для демонстрации) -->
+        <div id="content-blocks" class="space-y-16">
+            <!-- Блоки будут вставлены сюда с помощью JavaScript -->
+        </div>
+
+    </main>
+
+    <!-- Подвал -->
+    <footer class="bg-white dark:bg-darker border-t border-gray-200 dark:border-gray-800 mt-auto">
+        <div class="max-w-[1600px] mx-auto px-4 py-8 text-sm text-gray-500 flex flex-col md:flex-row justify-between items-center">
+            <p>© 2026 KINOBASE. Все права защищены. Сайт не содержит видеофайлов, а лишь предоставляет ссылки на открытые источники.</p>
+            <div class="flex gap-4 mt-4 md:mt-0">
+                <a href="#" class="hover:text-gray-900 dark:hover:text-white">Пользовательское соглашение</a>
+                <a href="#" class="hover:text-gray-900 dark:hover:text-white">Правообладателям</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Скрипты логики работы UI -->
+    <script>
+        // 1. Управление темой
+        const htmlEl = document.documentElement;
+        const themeIcon = document.getElementById('theme-icon');
+        
+        // Проверка сохраненной темы
+        if (localStorage.theme === 'light' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: light)').matches)) {
+            htmlEl.classList.remove('dark');
+            themeIcon.textContent = '☀️';
+        }
+
+        function toggleTheme() {
+            if (htmlEl.classList.contains('dark')) {
+                htmlEl.classList.remove('dark');
+                localStorage.theme = 'light';
+                themeIcon.textContent = '☀️';
+            } else {
+                htmlEl.classList.add('dark');
+                localStorage.theme = 'dark';
+                themeIcon.textContent = '🌙';
+            }
+        }
+
+        // 2. Работа с Cookie для избранного (сохраняем на 7 дней)
+        function setCookie(name, value, days) {
+            let expires = "";
+            if (days) {
+                let date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            document.cookie = name + "=" + (value || "") + expires + "; path=/";
+        }
+
+        function getCookie(name) {
+            let nameEQ = name + "=";
+            let ca = document.cookie.split(';');
+            for(let i=0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) == ' ') c = c.substring(1,c.length);
+                if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+            }
+            return null;
+        }
+
+        // Получаем массив ID избранных фильмов
+        let favorites = [];
+        const favCookie = getCookie('favorites');
+        if (favCookie) {
+            try { favorites = JSON.parse(favCookie); } catch(e) {}
+        }
+
+        function toggleFavorite(id, btnElement) {
+            const index = favorites.indexOf(id);
+            const svgIcon = btnElement.querySelector('svg');
+
+            if (index > -1) {
+                // Удалить из избранного
+                favorites.splice(index, 1);
+                svgIcon.setAttribute('fill', 'none');
+                svgIcon.setAttribute('stroke', 'currentColor');
+                svgIcon.classList.remove('text-brand');
+            } else {
+                // Добавить в избранное
+                favorites.push(id);
+                svgIcon.setAttribute('fill', 'currentColor');
+                svgIcon.setAttribute('stroke', 'transparent');
+                svgIcon.classList.add('text-brand');
+            }
+            // Сохраняем в куки на 7 дней
+            setCookie('favorites', JSON.stringify(favorites), 7);
+        }
+
+        // 3. Генерация контента (Имитация работы WordPress цикла while(have_posts()))
+        const categories = [
+            { title: "Фильмы", id: "cat-movies" },
+            { title: "Сериалы", id: "cat-series" },
+            { title: "Телепередачи", id: "cat-tv" },
+            { title: "Новинки 2026", id: "cat-new" }
+        ];
+
+        // Функция переключения табов цен
+        function switchTab(btn, type) {
+            const card = btn.closest('.flex-grow');
+            const rentBtn = card.querySelector('.tab-rent');
+            const buyBtn = card.querySelector('.tab-buy');
+            const rentGrid = card.querySelector('.price-rent');
+            const buyGrid = card.querySelector('.price-buy');
+
+            // Сбрасываем стили кнопок
+            rentBtn.className = 'flex-1 text-xs sm:text-sm uppercase font-bold text-center py-2 rounded bg-gray-200 dark:bg-gray-800 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors tab-rent';
+            buyBtn.className = 'flex-1 text-xs sm:text-sm uppercase font-bold text-center py-2 rounded bg-gray-200 dark:bg-gray-800 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors tab-buy';
+            
+            // Скрываем обе сетки
+            rentGrid.classList.add('hidden');
+            buyGrid.classList.add('hidden');
+
+            // Активируем нужный таб
+            if (type === 'rent') {
+                rentBtn.className = 'flex-1 text-xs sm:text-sm uppercase font-bold text-center py-2 rounded bg-brand text-white transition-colors tab-rent';
+                rentGrid.classList.remove('hidden');
+            } else {
+                buyBtn.className = 'flex-1 text-xs sm:text-sm uppercase font-bold text-center py-2 rounded bg-brand text-white transition-colors tab-buy';
+                buyGrid.classList.remove('hidden');
+            }
+        }
+
+        // Функция генерации случайного числа
+        const rand = (min, max) => Math.floor(Math.random() * (max - min + 1) + min);
+
+        // Функция создания HTML карточки фильма
+        function generateMovieCardHTML(id) {
+            const isFav = favorites.includes(id);
+            const favIconFill = isFav ? 'currentColor' : 'none';
+            const favIconClass = isFav ? 'text-brand' : 'text-white';
+            const views = (rand(100, 9900) / 10).toFixed(1) + 'K';
+            const year = rand(2010, 2026);
+            
+            // Заглушки для 4 фото. В WP тут будут выводиться реальные миниатюры
+            const imgBase = `https://picsum.photos/seed/${id}`;
+            
+            return `
+            <div class="group flex flex-col bg-white dark:bg-[#15181e] rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-gray-800">
+                
+                <!-- Постер и Галерея -->
+                <div class="gallery-container bg-gray-900" onmouseleave="resetGallery(this)">
+                    <!-- 4 изображения -->
+                    <img src="${imgBase}1/300/450" class="gallery-img active" alt="Постер 1" loading="lazy">
+                    <img src="${imgBase}2/300/450" class="gallery-img" alt="Кадр 2" loading="lazy">
+                    <img src="${imgBase}3/300/450" class="gallery-img" alt="Кадр 3" loading="lazy">
+                    <img src="${imgBase}4/300/450" class="gallery-img" alt="Кадр 4" loading="lazy">
+                    
+                    <!-- Зоны наведения для смены фото -->
+                    <div class="gallery-nav">
+                        <div class="gallery-nav-zone" onmouseenter="showImage(this, 0)"></div>
+                        <div class="gallery-nav-zone" onmouseenter="showImage(this, 1)"></div>
+                        <div class="gallery-nav-zone" onmouseenter="showImage(this, 2)"></div>
+                        <div class="gallery-nav-zone" onmouseenter="showImage(this, 3)"></div>
+                    </div>
+
+                    <!-- Плашки поверх постера -->
+                    <div class="absolute top-2 left-2 flex flex-col gap-1 z-20">
+                        <span class="bg-black/60 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1 rounded">HD 1080</span>
+                    </div>
+
+                    <!-- Иконки: Избранное и Просмотры -->
+                    <div class="absolute top-2 right-2 flex flex-col items-end gap-2 z-20">
+                        <button onclick="toggleFavorite(${id}, this)" class="p-2 bg-black/40 backdrop-blur-md rounded-full hover:bg-black/80 transition ${favIconClass}">
+                            <svg class="w-5 h-5" fill="${favIconFill}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+                        </button>
+                        <div class="flex items-center gap-1.5 bg-black/40 backdrop-blur-md text-white text-xs px-2 py-1 rounded-full">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                            ${views}
+                        </div>
+                    </div>
+
+                    <!-- Индикатор текущего фото -->
+                    <div class="absolute bottom-2 left-0 w-full flex justify-center gap-1 z-20 px-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div class="h-1 flex-1 bg-white/30 rounded-full overflow-hidden"><div class="h-full bg-brand w-0 transition-all img-indicator"></div></div>
+                        <div class="h-1 flex-1 bg-white/30 rounded-full overflow-hidden"><div class="h-full bg-brand w-0 transition-all img-indicator"></div></div>
+                        <div class="h-1 flex-1 bg-white/30 rounded-full overflow-hidden"><div class="h-full bg-brand w-0 transition-all img-indicator"></div></div>
+                        <div class="h-1 flex-1 bg-white/30 rounded-full overflow-hidden"><div class="h-full bg-brand w-0 transition-all img-indicator"></div></div>
+                    </div>
+                </div>
+
+                <!-- Информация о фильме -->
+                <div class="p-4 flex-grow flex flex-col">
+                    <h3 class="font-bold text-lg md:text-xl leading-tight mb-2 truncate">Название фильма ${id}</h3>
+                    
+                    <table class="w-full text-sm text-gray-500 dark:text-gray-400 mb-4">
+                        <tr><td class="pb-1 w-14">Год:</td><td class="pb-1 text-gray-900 dark:text-gray-200">${year}</td></tr>
+                        <tr><td>Жанр:</td><td class="text-gray-900 dark:text-gray-200 truncate">Фантастика, Триллер</td></tr>
+                    </table>
+
+                    <!-- Цены с табами -->
+                    <div class="mt-auto">
+                        <!-- Табы -->
+                        <div class="flex gap-2 mb-2">
+                            <button onclick="switchTab(this, 'rent')" class="flex-1 text-xs sm:text-sm uppercase font-bold text-center py-2 rounded bg-brand text-white transition-colors tab-rent">Аренда</button>
+                            <button onclick="switchTab(this, 'buy')" class="flex-1 text-xs sm:text-sm uppercase font-bold text-center py-2 rounded bg-gray-200 dark:bg-gray-800 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors tab-buy">Покупка</button>
+                        </div>
+                        
+                        <!-- Сетка Аренды (открыта по умолчанию) -->
+                        <div class="price-rent grid grid-cols-3 gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded">
+                            <button class="bg-white dark:bg-[#1a1d24] text-xs py-2 text-center rounded hover:text-brand transition-colors" title="1 просмотр">1пр<br><b class="text-sm">49₽</b></button>
+                            <button class="bg-white dark:bg-[#1a1d24] text-xs py-2 text-center rounded hover:text-brand transition-colors" title="3 просмотра">3пр<br><b class="text-sm">99₽</b></button>
+                            <button class="bg-white dark:bg-[#1a1d24] text-xs py-2 text-center rounded hover:text-brand transition-colors" title="5 просмотров">5пр<br><b class="text-sm">149₽</b></button>
+                        </div>
+
+                        <!-- Сетка Покупки (изначально скрыта) -->
+                        <div class="price-buy hidden grid grid-cols-3 gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded">
+                            <button class="bg-white dark:bg-[#1a1d24] text-xs py-2 text-center rounded hover:text-brand transition-colors" title="1 Неделя">1нед<br><b class="text-sm">199₽</b></button>
+                            <button class="bg-white dark:bg-[#1a1d24] text-xs py-2 text-center rounded hover:text-brand transition-colors" title="1 Месяц">1мес<br><b class="text-sm">299₽</b></button>
+                            <button class="bg-white dark:bg-[#1a1d24] text-xs py-2 text-center rounded hover:text-brand transition-colors" title="Навсегда">∞<br><b class="text-sm">499₽</b></button>
+                        </div>
+
+                        <!-- Купон -->
+                        <div class="mt-4 h-10 sm:h-11 relative">
+                            <button onclick="revealCoupon(this, 'SUPER${id}')" class="w-full h-full text-sm sm:text-base bg-brand text-white hover:bg-red-600 rounded transition flex items-center justify-center font-bold shadow-sm">
+                                Показать купон
+                            </button>
+                        </div>
+
+                        <!-- Дополнительные характеристики -->
+                        <div class="mt-4 grid grid-cols-3 gap-2 text-center border-t border-gray-100 dark:border-gray-800 pt-3 pb-1">
+                            <div class="flex flex-col">
+                                <span class="text-[10px] md:text-xs text-gray-400 mb-0.5 uppercase tracking-wider">Качество</span>
+                                <span class="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-200">HD</span>
+                            </div>
+                            <div class="flex flex-col border-l border-r border-gray-100 dark:border-gray-800">
+                                <span class="text-[10px] md:text-xs text-gray-400 mb-0.5 uppercase tracking-wider">Перевод</span>
+                                <span class="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-200 truncate px-1" title="Профессиональный">Проф.</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-[10px] md:text-xs text-gray-400 mb-0.5 uppercase tracking-wider">Время</span>
+                                <span class="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-200">1ч 55м</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        // Функции для галереи изображений
+        function showImage(zoneElement, index) {
+            const container = zoneElement.closest('.gallery-container');
+            const images = container.querySelectorAll('.gallery-img');
+            const indicators = container.querySelectorAll('.img-indicator');
+            
+            images.forEach(img => img.classList.remove('active'));
+            indicators.forEach(ind => ind.style.width = '0');
+            
+            images[index].classList.add('active');
+            indicators[index].style.width = '100%';
+        }
+
+        function resetGallery(container) {
+            const images = container.querySelectorAll('.gallery-img');
+            const indicators = container.querySelectorAll('.img-indicator');
+            
+            images.forEach(img => img.classList.remove('active'));
+            indicators.forEach(ind => ind.style.width = '0');
+            
+            images[0].classList.add('active');
+        }
+
+        // Функция показа купона
+        function revealCoupon(btn, code) {
+            btn.outerHTML = `<div class="w-full h-full text-sm sm:text-base bg-brand text-white rounded flex items-center justify-center font-bold tracking-widest cursor-copy shadow-sm hover:bg-red-600 transition" onclick="copyToClipboard('${code}', this)" title="Нажмите, чтобы скопировать">${code}</div>`;
+        }
+
+        // Копирование купона (бонус-фича для удобства)
+        function copyToClipboard(text, el) {
+            document.execCommand('copy'); // Fallback for embedded frames
+            const originalText = el.innerText;
+            el.innerText = 'СКОПИРОВАНО!';
+            setTimeout(() => el.innerText = originalText, 1500);
+        }
+
+        // Инициализация контента (рендеринг блоков и сетки)
+        const container = document.getElementById('content-blocks');
+        let globalId = 1;
+
+        categories.forEach(cat => {
+            let gridHTML = '';
+            // 2 строки по 5 фильмов = 10 фильмов в блоке
+            for(let i=0; i<10; i++) {
+                gridHTML += generateMovieCardHTML(globalId++);
+            }
+
+            const sectionHTML = `
+                <section>
+                    <div class="flex items-center justify-between mb-6 border-b border-gray-200 dark:border-gray-800 pb-3">
+                        <h2 class="text-2xl md:text-3xl font-bold uppercase tracking-wider text-brand">${cat.title}</h2>
+                        <a href="#" class="text-base text-gray-500 hover:text-brand hover:underline font-medium transition-colors">Смотреть все</a>
+                    </div>
+                    <!-- Сетка: 1 колонка на мобилках, 2-3 на планшетах, 5 на ПК -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
+                        ${gridHTML}
+                    </div>
+                </section>
+            `;
+            container.innerHTML += sectionHTML;
+        });
+
+    </script>
+</body>
+</html>
