@@ -762,6 +762,17 @@ ul, ol { list-style: none; }
 .footer-links { display: flex; gap: 1.25rem; flex-wrap: wrap; }
 .footer-links a:hover { color: var(--text); }
 
+/* --- Generic Page --------------------------------------- */
+.page-article { max-width: 800px; margin-inline: auto; padding-block: 3rem; }
+.page-title {
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 1.5rem;
+}
+.page-content { color: var(--text-muted); line-height: 1.7; }
+.page-content p { margin-bottom: 1rem; }
+
 /* --- Contact Page --------------------------------------- */
 .contact-wrap {
   max-width: 640px;
