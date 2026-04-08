@@ -132,3 +132,60 @@ class Kinobase_Nav_Walker extends Walker_Nav_Menu
             . esc_html($item->title) . '</a>';
     }
 }
+
+/**
+ * Custom post type: Contact Messages (kb_message)
+ * Visible only in admin, stores contact form submissions.
+ */
+add_action('init', 'kinobase_register_message_cpt');
+
+function kinobase_register_message_cpt(): void
+{
+    register_post_type('kb_message', [
+        'labels' => [
+            'name'               => 'Сообщения',
+            'singular_name'      => 'Сообщение',
+            'menu_name'          => 'Сообщения',
+            'all_items'          => 'Все сообщения',
+            'view_item'          => 'Просмотр сообщения',
+            'search_items'       => 'Поиск сообщений',
+            'not_found'          => 'Сообщений нет',
+            'not_found_in_trash' => 'Корзина пуста',
+        ],
+        'public'        => false,
+        'show_ui'       => true,
+        'show_in_menu'  => true,
+        'menu_icon'     => 'dashicons-email-alt',
+        'menu_position' => 25,
+        'supports'      => ['title', 'editor'],
+        'capabilities'  => ['create_posts' => 'do_not_allow'],
+        'map_meta_cap'  => true,
+    ]);
+}
+
+// Admin columns: Email + Date received
+add_filter('manage_kb_message_posts_columns', 'kinobase_message_columns');
+
+function kinobase_message_columns(array $cols): array
+{
+    return [
+        'cb'              => $cols['cb'],
+        'title'           => 'Отправитель',
+        'kb_email'        => 'Email',
+        'kb_msg'          => 'Сообщение',
+        'date'            => 'Дата',
+    ];
+}
+
+add_action('manage_kb_message_posts_custom_column', 'kinobase_message_column_data', 10, 2);
+
+function kinobase_message_column_data(string $column, int $post_id): void
+{
+    if ($column === 'kb_email') {
+        $email = get_post_meta($post_id, 'contact_email', true);
+        echo '<a href="mailto:' . esc_attr($email) . '">' . esc_html($email) . '</a>';
+    }
+    if ($column === 'kb_msg') {
+        echo esc_html(wp_trim_words(get_post_field('post_content', $post_id), 12));
+    }
+}

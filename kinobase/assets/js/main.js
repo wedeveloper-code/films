@@ -273,4 +273,60 @@ document.addEventListener('DOMContentLoaded', function () {
         observer.observe(card);
     });
 
+    /* ============================================================
+       11. CONTACT FORM (AJAX submit)
+       ============================================================ */
+    var contactForm = document.getElementById('contact-form');
+    if (contactForm && typeof KinoBase !== 'undefined') {
+        var submitBtn   = document.getElementById('contact-submit');
+        var alertBox    = document.getElementById('contact-alert');
+
+        function setAlert(msg, type) {
+            alertBox.textContent = msg;
+            alertBox.className = 'contact-alert ' + type;
+        }
+
+        contactForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            var name    = contactForm.querySelector('[name="contact_name"]').value.trim();
+            var email   = contactForm.querySelector('[name="contact_email"]').value.trim();
+            var message = contactForm.querySelector('[name="contact_message"]').value.trim();
+
+            if (!name || !email || !message) {
+                setAlert('Пожалуйста, заполните все поля.', 'error');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.classList.add('loading');
+            alertBox.className = 'contact-alert';
+
+            var fd = new FormData();
+            fd.append('action',           'kinobase_contact');
+            fd.append('nonce',            KinoBase.contactNonce);
+            fd.append('contact_name',     name);
+            fd.append('contact_email',    email);
+            fd.append('contact_message',  message);
+
+            fetch(KinoBase.ajaxUrl, { method: 'POST', body: fd, credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        setAlert(data.data.message, 'success');
+                        contactForm.reset();
+                    } else {
+                        setAlert(data.data.message || 'Ошибка. Попробуйте позже.', 'error');
+                    }
+                })
+                .catch(function () {
+                    setAlert('Ошибка соединения. Попробуйте позже.', 'error');
+                })
+                .finally(function () {
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('loading');
+                });
+        });
+    }
+
 }); // end DOMContentLoaded

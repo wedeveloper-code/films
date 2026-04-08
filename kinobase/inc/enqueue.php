@@ -37,8 +37,9 @@ function kinobase_enqueue_assets(): void
 
     // Pass data to JS
     wp_localize_script('kinobase-main', 'KinoBase', [
-        'ajaxUrl' => admin_url('admin-ajax.php'),
-        'nonce'   => wp_create_nonce('kinobase_views'),
+        'ajaxUrl'      => admin_url('admin-ajax.php'),
+        'nonce'        => wp_create_nonce('kinobase_views'),
+        'contactNonce' => wp_create_nonce('kinobase_contact'),
     ]);
 }
 
