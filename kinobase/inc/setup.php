@@ -71,7 +71,7 @@ function kinobase_get_movie_count(): int
         $count = (int) wp_count_posts('post')->publish;
         set_transient('kinobase_movie_count', $count, HOUR_IN_SECONDS * 6);
     }
-    return $count;
+    return (int) $count;
 }
 
 // Remove category prefix from archive title
