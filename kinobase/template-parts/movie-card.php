@@ -51,6 +51,10 @@ $buy_forever  = (int) get_post_meta($post_id, 'movie_buy_forever', true);
 // Coupon
 $coupon = get_post_meta($post_id, 'movie_coupon', true);
 
+// Rating
+$rating_raw = get_post_meta($post_id, 'movie_rating', true);
+$rating_val = ($rating_raw !== '' && $rating_raw !== false) ? (float) $rating_raw : null;
+
 // Format views
 $views_fmt = $views >= 1000
     ? round($views / 1000, 1) . 'K'
@@ -90,9 +94,12 @@ $views_fmt = $views >= 1000
         }
         ?>
 
-        <!-- Quality badge -->
+        <!-- Quality badge + Rating -->
         <div class="poster-badges" aria-hidden="true">
             <span class="badge"><?php echo esc_html($quality); ?></span>
+            <?php if ($rating_val !== null) : ?>
+            <span class="badge badge-rating">★ <?php echo number_format($rating_val, 1); ?></span>
+            <?php endif; ?>
         </div>
 
         <!-- Actions: Favorite + Views -->
