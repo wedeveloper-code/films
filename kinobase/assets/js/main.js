@@ -501,7 +501,6 @@ document.addEventListener('DOMContentLoaded', function () {
         gallery.addEventListener('touchend', function (e) {
             var dx = e.changedTouches[0].clientX - swipeX;
             if (Math.abs(dx) < 30) return;
-            var zones = gallery.querySelectorAll('.gallery-zone');
             var imgs  = gallery.querySelectorAll('.gallery-img');
             var fills = gallery.querySelectorAll('.indicator-fill');
             var cur   = 0;
@@ -513,5 +512,109 @@ document.addEventListener('DOMContentLoaded', function () {
             if (fills[next]) fills[next].style.width = '100%';
         }, { passive: true });
     });
+
+    /* ============================================================
+       17. MOBILE SLIDER — Prev/Next + dots for .movie-grid
+       ============================================================ */
+    function initMobileSliders() {
+        if (window.innerWidth >= 640) return;
+
+        document.querySelectorAll('.category-section').forEach(function (section) {
+            var grid = section.querySelector('.movie-grid');
+            if (!grid || grid.dataset.sliderInit) return;
+            grid.dataset.sliderInit = '1';
+
+            var cards = grid.querySelectorAll('.movie-card');
+            if (cards.length < 2) return;
+
+            // Build nav bar
+            var nav = document.createElement('div');
+            nav.className = 'slider-nav';
+
+            var prevBtn = document.createElement('button');
+            prevBtn.className = 'slider-btn';
+            prevBtn.innerHTML = '&#8249;';
+            prevBtn.setAttribute('aria-label', 'Предыдущий');
+
+            var nextBtn = document.createElement('button');
+            nextBtn.className = 'slider-btn';
+            nextBtn.innerHTML = '&#8250;';
+            nextBtn.setAttribute('aria-label', 'Следующий');
+
+            var dotsWrap = document.createElement('div');
+            dotsWrap.className = 'slider-dots';
+
+            cards.forEach(function (_, i) {
+                var dot = document.createElement('button');
+                dot.className = 'slider-dot' + (i === 0 ? ' active' : '');
+                dot.setAttribute('aria-label', 'Карточка ' + (i + 1));
+                dot.dataset.index = String(i);
+                dotsWrap.appendChild(dot);
+            });
+
+            nav.appendChild(prevBtn);
+            nav.appendChild(dotsWrap);
+            nav.appendChild(nextBtn);
+            section.appendChild(nav);
+
+            function getCardWidth() {
+                return cards[0].offsetWidth + parseFloat(getComputedStyle(grid).gap || '14');
+            }
+
+            function getCurrentIndex() {
+                return Math.round(grid.scrollLeft / getCardWidth());
+            }
+
+            function goTo(idx) {
+                idx = Math.max(0, Math.min(idx, cards.length - 1));
+                grid.scrollTo({ left: idx * getCardWidth(), behavior: 'smooth' });
+            }
+
+            function updateState() {
+                var idx = getCurrentIndex();
+                dotsWrap.querySelectorAll('.slider-dot').forEach(function (d, i) {
+                    d.classList.toggle('active', i === idx);
+                });
+                prevBtn.disabled = idx === 0;
+                nextBtn.disabled = idx === cards.length - 1;
+            }
+
+            prevBtn.addEventListener('click', function () { goTo(getCurrentIndex() - 1); });
+            nextBtn.addEventListener('click', function () { goTo(getCurrentIndex() + 1); });
+            dotsWrap.addEventListener('click', function (e) {
+                var dot = e.target.closest('.slider-dot');
+                if (dot) goTo(parseInt(dot.dataset.index, 10));
+            });
+            grid.addEventListener('scroll', updateState, { passive: true });
+
+            updateState();
+        });
+    }
+
+    initMobileSliders();
+
+    // Re-init on resize crossing the 640px breakpoint
+    var _prevMobile = window.innerWidth < 640;
+    window.addEventListener('resize', function () {
+        var isMobile = window.innerWidth < 640;
+        if (isMobile && !_prevMobile) initMobileSliders();
+        _prevMobile = isMobile;
+    });
+
+    /* ============================================================
+       18. SWIPE HINT (shown once per device via localStorage)
+       ============================================================ */
+    if (window.innerWidth < 640 && !localStorage.getItem('kb_swipe_hint')) {
+        var firstSection = document.querySelector('.category-section');
+        if (firstSection) {
+            var hint = document.createElement('div');
+            hint.className = 'swipe-hint';
+            hint.innerHTML = '<div class="swipe-hint-inner">← Листайте карточки →</div>';
+            firstSection.style.position = 'relative';
+            firstSection.appendChild(hint);
+            localStorage.setItem('kb_swipe_hint', '1');
+            setTimeout(function () { hint.remove(); }, 2600);
+        }
+    }
 
 }); // end DOMContentLoaded
