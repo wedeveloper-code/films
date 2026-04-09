@@ -46,16 +46,7 @@
             </a>
 
             <nav class="nav-primary" id="nav-primary" role="navigation" aria-label="<?php esc_attr_e('Главное меню', 'kinobase'); ?>">
-                <?php
-                wp_nav_menu([
-                    'theme_location' => 'primary',
-                    'container'      => false,
-                    'menu_class'     => '',
-                    'items_wrap'     => '%3$s',
-                    'walker'         => new Kinobase_Nav_Walker(),
-                    'fallback_cb'    => 'kinobase_fallback_menu',
-                ]);
-                ?>
+                <?php kinobase_nav_with_dropdowns(); ?>
             </nav>
         </div>
 

@@ -242,3 +242,201 @@ function kinobase_recalculate_movie_rating(string $new_status, string $old_statu
         update_post_meta($post_id, 'movie_rating', round($avg, 1));
     }
 }
+
+// ─────────────────────────────────────────────────────────────────
+// Clean URL filtering: /category/{main}/{year}/
+//                      /category/{main}/genres/{genre}/
+//                      /category/{main}/{year}/genres/{genre}/
+// ─────────────────────────────────────────────────────────────────
+add_action('init', 'kinobase_add_rewrite_rules');
+add_action('after_switch_theme', function (): void {
+    kinobase_add_rewrite_rules();
+    flush_rewrite_rules();
+});
+
+function kinobase_add_rewrite_rules(): void
+{
+    $b = 'category/([^/]+)'; // main category slug
+    $y = '([0-9]{4})';        // 4-digit year
+    $g = 'genres/([^/]+)';   // genre segment
+    $p = 'page/([0-9]+)';    // pagination
+
+    // year + genre + page
+    add_rewrite_rule("^{$b}/{$y}/{$g}/{$p}/?$",
+        'index.php?category_name=$matches[1]&kb_year=$matches[2]&kb_genre=$matches[3]&paged=$matches[4]', 'top');
+    // year + genre
+    add_rewrite_rule("^{$b}/{$y}/{$g}/?$",
+        'index.php?category_name=$matches[1]&kb_year=$matches[2]&kb_genre=$matches[3]', 'top');
+    // genre only + page
+    add_rewrite_rule("^{$b}/{$g}/{$p}/?$",
+        'index.php?category_name=$matches[1]&kb_genre=$matches[2]&paged=$matches[3]', 'top');
+    // genre only
+    add_rewrite_rule("^{$b}/{$g}/?$",
+        'index.php?category_name=$matches[1]&kb_genre=$matches[2]', 'top');
+    // year only + page
+    add_rewrite_rule("^{$b}/{$y}/{$p}/?$",
+        'index.php?category_name=$matches[1]&kb_year=$matches[2]&paged=$matches[3]', 'top');
+    // year only
+    add_rewrite_rule("^{$b}/{$y}/?$",
+        'index.php?category_name=$matches[1]&kb_year=$matches[2]', 'top');
+}
+
+add_filter('query_vars', 'kinobase_query_vars');
+
+function kinobase_query_vars(array $vars): array
+{
+    $vars[] = 'kb_year';
+    $vars[] = 'kb_genre';
+    return $vars;
+}
+
+add_action('pre_get_posts', 'kinobase_filter_archive');
+
+function kinobase_filter_archive(WP_Query $query): void
+{
+    if (is_admin() || !$query->is_main_query()) return;
+
+    $kb_year  = sanitize_text_field($query->get('kb_year'));
+    $kb_genre = sanitize_text_field($query->get('kb_genre'));
+
+    if (!$kb_year && !$kb_genre) return;
+
+    $tax_query = ['relation' => 'AND'];
+
+    if ($kb_year) {
+        $t = get_term_by('slug', $kb_year, 'category');
+        if ($t && !is_wp_error($t)) {
+            $tax_query[] = ['taxonomy' => 'category', 'field' => 'term_id', 'terms' => [(int) $t->term_id]];
+        }
+    }
+
+    if ($kb_genre) {
+        $t = get_term_by('slug', $kb_genre, 'category');
+        if ($t && !is_wp_error($t)) {
+            $tax_query[] = ['taxonomy' => 'category', 'field' => 'term_id', 'terms' => [(int) $t->term_id]];
+        }
+    }
+
+    if (count($tax_query) > 1) {
+        $query->set('tax_query', $tax_query);
+    }
+}
+
+/**
+ * Build a filtered category URL.
+ * Pattern: /category/{main}/{year}/genres/{genre}/
+ */
+function kinobase_filter_url(string $main_slug, string $year = '', string $genre = ''): string
+{
+    $url = home_url('/category/' . $main_slug . '/');
+    if ($year)  $url .= $year . '/';
+    if ($genre) $url .= 'genres/' . $genre . '/';
+    return $url;
+}
+
+/**
+ * Primary navigation with year/genre dropdowns.
+ * Replaces wp_nav_menu in header.php.
+ */
+function kinobase_nav_with_dropdowns(): void
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+
+    $main_cats = [
+        ['slug' => 'films',  'name' => 'Фильмы',       'label' => 'Фильмы'],
+        ['slug' => 'series', 'name' => 'Сериалы',      'label' => 'Сериалы'],
+        ['slug' => 'tv',     'name' => 'Телепередачи', 'label' => 'Телепередачи'],
+        ['slug' => 'new',    'name' => 'Новинки',       'label' => 'Новинки'],
+    ];
+
+    $queried      = is_category() ? get_queried_object() : null;
+    $active_year  = sanitize_text_field(get_query_var('kb_year'));
+    $active_genre = sanitize_text_field(get_query_var('kb_genre'));
+    $current_main = '';
+
+    if ($queried) {
+        foreach ($main_cats as $mc) {
+            if ($queried->slug === $mc['slug']) {
+                $current_main = $mc['slug'];
+                break;
+            }
+        }
+    }
+
+    // Fetch year/genre terms once
+    $year_parent  = get_term_by('slug', 'god', 'category')
+                 ?: get_term_by('name', 'Год', 'category');
+    $genre_parent = get_term_by('slug', 'zhanry', 'category')
+                 ?: get_term_by('name', 'Жанры', 'category');
+
+    $years = $genres = [];
+    if ($year_parent && !is_wp_error($year_parent)) {
+        $r     = get_terms(['taxonomy' => 'category', 'parent' => $year_parent->term_id,
+                             'hide_empty' => true, 'orderby' => 'name', 'order' => 'DESC', 'number' => 20]);
+        $years = !is_wp_error($r) ? $r : [];
+    }
+    if ($genre_parent && !is_wp_error($genre_parent)) {
+        $r      = get_terms(['taxonomy' => 'category', 'parent' => $genre_parent->term_id,
+                              'hide_empty' => true, 'number' => 40]);
+        $genres = !is_wp_error($r) ? $r : [];
+    }
+
+    $has_dropdowns = !empty($years) || !empty($genres);
+
+    foreach ($main_cats as $mc) {
+        $cat = get_category_by_slug($mc['slug'])
+            ?: get_term_by('name', $mc['name'], 'category');
+        if (!$cat) continue;
+
+        $cat_url    = get_category_link($cat->term_id);
+        $is_current = ($current_main === $mc['slug']);
+
+        if (!$has_dropdowns) {
+            $cls = $is_current ? ' class="current-menu-item"' : '';
+            echo '<a href="' . esc_url($cat_url) . '"' . $cls . '>'
+               . esc_html(__($mc['label'], 'kinobase')) . '</a>';
+            continue;
+        }
+
+        $div_cls = 'nav-item' . ($is_current ? ' current-menu-item' : '');
+        echo '<div class="' . esc_attr($div_cls) . '">';
+        echo '<a href="' . esc_url($cat_url) . '" class="nav-item-link">'
+           . esc_html(__($mc['label'], 'kinobase')) . '</a>';
+        echo '<div class="nav-dropdown">';
+        echo '<div class="nav-dropdown-inner">';
+
+        if (!empty($years)) {
+            echo '<div class="nav-dropdown-col">';
+            echo '<div class="nav-dropdown-heading">' . esc_html__('Год', 'kinobase') . '</div>';
+            foreach ($years as $term) {
+                if (is_wp_error($term)) continue;
+                $href = $is_current
+                    ? kinobase_filter_url($mc['slug'], $term->slug, $active_genre)
+                    : get_category_link($term->term_id);
+                $ac   = ($active_year === $term->slug && $is_current) ? ' class="active"' : '';
+                echo '<a href="' . esc_url($href) . '"' . $ac . '>' . esc_html($term->name) . '</a>';
+            }
+            echo '</div>';
+        }
+
+        if (!empty($genres)) {
+            echo '<div class="nav-dropdown-col">';
+            echo '<div class="nav-dropdown-heading">' . esc_html__('Жанр', 'kinobase') . '</div>';
+            foreach ($genres as $term) {
+                if (is_wp_error($term)) continue;
+                $href = $is_current
+                    ? kinobase_filter_url($mc['slug'], $active_year, $term->slug)
+                    : get_category_link($term->term_id);
+                $ac   = ($active_genre === $term->slug && $is_current) ? ' class="active"' : '';
+                echo '<a href="' . esc_url($href) . '"' . $ac . '>' . esc_html($term->name) . '</a>';
+            }
+            echo '</div>';
+        }
+
+        echo '</div>'; // .nav-dropdown-inner
+        echo '</div>'; // .nav-dropdown
+        echo '</div>'; // .nav-item
+    }
+}

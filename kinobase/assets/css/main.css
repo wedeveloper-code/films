@@ -1618,3 +1618,160 @@ a.mobile-page-num:hover { background: var(--border); color: var(--text); }
   transition: background 0.2s;
 }
 .favorites-back-btn:hover { background: var(--brand-hover); }
+
+/* ============================================================
+   Nav dropdown (year / genre filters in primary nav)
+   ============================================================ */
+.nav-primary .nav-item {
+  position: relative;
+}
+/* nav-item-link inherits .nav-primary a styles */
+.nav-primary .nav-item-link {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: color 0.2s;
+  white-space: nowrap;
+}
+.nav-primary .nav-item:hover .nav-item-link,
+.nav-primary .nav-item.current-menu-item .nav-item-link {
+  color: var(--brand);
+}
+/* Transparent padding-top bridges the gap to prevent accidental close */
+.nav-primary .nav-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  padding-top: 0.75rem;
+  z-index: 200;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+  transition-delay: 0.18s;
+}
+.nav-primary .nav-item:hover .nav-dropdown {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+.nav-dropdown-inner {
+  display: flex;
+  gap: 2rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,.3);
+  max-height: 420px;
+  overflow-y: auto;
+}
+.nav-dropdown-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 80px;
+}
+.nav-dropdown-heading {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 0.625rem;
+  padding: 0 0.25rem;
+  white-space: nowrap;
+}
+.nav-dropdown-col a {
+  font-size: 0.825rem;
+  color: var(--text);
+  text-decoration: none;
+  padding: 0.2rem 0.35rem;
+  border-radius: 0.3rem;
+  white-space: nowrap;
+  transition: color 0.1s, background 0.1s;
+}
+.nav-dropdown-col a:hover,
+.nav-dropdown-col a.active {
+  color: var(--brand);
+  background: rgba(255, 77, 77, 0.09);
+}
+
+/* ============================================================
+   Archive filter bar (year / genre selects on category pages)
+   ============================================================ */
+.archive-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+.filter-select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.filter-select-wrap::after {
+  content: '';
+  position: absolute;
+  right: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid var(--text-muted);
+  pointer-events: none;
+}
+.filter-select {
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.4rem 2.375rem 0.4rem 1rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color 0.15s;
+}
+.filter-select:hover { border-color: var(--brand); }
+.filter-select:focus { outline: 2px solid var(--brand); outline-offset: 2px; }
+.filter-reset {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.4rem 1rem;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.filter-reset:hover { color: var(--brand); border-color: var(--brand); }
+
+/* Active filter badges in catalog heading */
+.active-filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.5em;
+  background: var(--brand);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.2em 0.5em 0.2em 0.65em;
+  vertical-align: middle;
+  font-weight: 600;
+  line-height: 1.7;
+  margin-left: 0.3rem;
+}
+.active-filter-tag .remove-filter {
+  color: rgba(255,255,255,0.75);
+  font-weight: 700;
+  font-size: 1.15em;
+  line-height: 1;
+  text-decoration: none;
+}
+.active-filter-tag .remove-filter:hover { color: #fff; }
