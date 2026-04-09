@@ -2,35 +2,109 @@
 /**
  * Front Page Template
  *
- * Displays 4 category blocks (Фильмы, Сериалы, Телепередачи, Новинки),
- * each showing 10 movie cards in a 5-column grid.
+ * Displays 4 category blocks (Фильмы, Сериалы, Телепередачи, Новинки).
+ * Supports /{year}/ URL for year-filtered homepage via kb_home_year query var.
  *
  * @package KinoBase
  */
 
 get_header();
+
+// Year filter (set when URL is e.g. /2022/)
+$kb_home_year = sanitize_text_field(get_query_var('kb_home_year'));
+$year_term    = null;
+if ($kb_home_year) {
+    $t = get_term_by('slug', $kb_home_year, 'category');
+    if ($t && !is_wp_error($t)) {
+        $year_term = $t;
+    }
+}
+
+// Year terms for filter panel
+$year_parent = kinobase_get_year_parent();
+$home_years  = [];
+if ($year_parent) {
+    $r          = get_terms(['taxonomy' => 'category', 'parent' => $year_parent->term_id,
+                              'hide_empty' => true, 'orderby' => 'name', 'order' => 'DESC', 'number' => 20]);
+    $home_years = !is_wp_error($r) ? $r : [];
+}
 ?>
 <main class="site-content" id="main" role="main">
     <div class="container">
 
-        <!-- H1 + Movie Count -->
+        <!-- H1 + Filter Button -->
         <div class="catalog-heading">
-            <h1 class="catalog-title">
-                <?php esc_html_e('Каталог видео', 'kinobase'); ?>
-                <span class="catalog-count">
-                    <?php printf(
-                        /* translators: %s: formatted number */
-                        esc_html__('— всего в базе %s видео', 'kinobase'),
-                        '<strong>' . number_format(kinobase_get_movie_count()) . '</strong>'
-                    ); ?>
-                </span>
-            </h1>
+            <div class="catalog-heading-left">
+                <h1 class="catalog-title">
+                    <?php esc_html_e('Каталог видео', 'kinobase'); ?>
+                    <?php if ($kb_home_year) : ?>
+                    <span class="active-filter-tag">
+                        <?php echo esc_html($year_term ? $year_term->name : $kb_home_year); ?>
+                        <a href="<?php echo esc_url(home_url('/')); ?>" class="remove-filter">×</a>
+                    </span>
+                    <?php else : ?>
+                    <span class="catalog-count">
+                        <?php printf(
+                            /* translators: %s: formatted number */
+                            esc_html__('— всего в базе %s видео', 'kinobase'),
+                            '<strong>' . number_format(kinobase_get_movie_count()) . '</strong>'
+                        ); ?>
+                    </span>
+                    <?php endif; ?>
+                </h1>
+            </div>
+
+            <?php if (!empty($home_years)) : ?>
+            <div class="filter-panel-wrap">
+                <button class="filter-panel-btn<?php echo $kb_home_year ? ' active' : ''; ?>"
+                        id="js-filter-btn"
+                        aria-expanded="false"
+                        aria-controls="js-filter-panel">
+                    <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6 10a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm2 4a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+                    <?php esc_html_e('Фильтры', 'kinobase'); ?>
+                    <?php if ($kb_home_year) : ?>
+                    <span class="filter-panel-badge">1</span>
+                    <?php endif; ?>
+                </button>
+
+                <div class="filter-panel<?php echo $kb_home_year ? ' open' : ''; ?>"
+                     id="js-filter-panel"
+                     role="dialog"
+                     aria-label="<?php esc_attr_e('Фильтры', 'kinobase'); ?>">
+                    <div class="filter-screen active" id="filter-screen-main">
+                        <div class="filter-screen-header">
+                            <span class="filter-screen-title"><?php esc_html_e('Год', 'kinobase'); ?></span>
+                            <button class="filter-close-btn" aria-label="<?php esc_attr_e('Закрыть', 'kinobase'); ?>">×</button>
+                        </div>
+                        <ul class="filter-sub-list">
+                            <?php foreach ($home_years as $term) : if (is_wp_error($term)) continue; ?>
+                            <li>
+                                <a href="<?php echo esc_url(home_url('/' . $term->slug . '/')); ?>"
+                                   class="filter-sub-link<?php echo ($kb_home_year === $term->slug) ? ' active' : ''; ?>">
+                                    <?php echo esc_html($term->name); ?>
+                                    <?php if ($kb_home_year === $term->slug) : ?>
+                                    <span class="filter-sub-check">✓</span>
+                                    <?php endif; ?>
+                                </a>
+                            </li>
+                            <?php endforeach; ?>
+                        </ul>
+                        <?php if ($kb_home_year) : ?>
+                        <div class="filter-panel-footer">
+                            <a href="<?php echo esc_url(home_url('/')); ?>" class="filter-reset-btn">
+                                <?php esc_html_e('Сбросить', 'kinobase'); ?>
+                            </a>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
         </div>
 
         <!-- Category blocks -->
         <div class="content-blocks">
             <?php
-            // Each section: try English slug first, then Russian name as fallback
             $sections = [
                 ['slug' => 'films',  'name' => 'Фильмы',       'label' => __('Фильмы', 'kinobase')],
                 ['slug' => 'series', 'name' => 'Сериалы',      'label' => __('Сериалы', 'kinobase')],
@@ -46,18 +120,32 @@ get_header();
                       ?: get_term_by('name', $section['name'], 'category');
                 if (!$cat) continue;
 
-                $cat_link = get_category_link($cat->term_id);
+                $cat_link = $kb_home_year
+                    ? kinobase_filter_url($section['slug'], $kb_home_year)
+                    : get_category_link($cat->term_id);
 
-                $query = new WP_Query([
-                    'post_type'      => 'post',
-                    'post_status'    => 'publish',
-                    'cat'            => $cat->term_id,
-                    'posts_per_page' => 10,
-                    'no_found_rows'  => true,   // Performance: skip COUNT(*)
-                    'orderby'        => 'date',
-                    'order'          => 'DESC',
-                    'update_post_term_cache' => false, // We don't need terms in the loop
-                ]);
+                // Build query args — add year tax_query when filtering
+                $query_args = [
+                    'post_type'               => 'post',
+                    'post_status'             => 'publish',
+                    'posts_per_page'          => 10,
+                    'no_found_rows'           => true,
+                    'orderby'                 => 'date',
+                    'order'                   => 'DESC',
+                    'update_post_term_cache'  => false,
+                ];
+
+                if ($year_term) {
+                    $query_args['tax_query'] = [
+                        'relation' => 'AND',
+                        ['taxonomy' => 'category', 'field' => 'term_id', 'terms' => [(int) $cat->term_id]],
+                        ['taxonomy' => 'category', 'field' => 'term_id', 'terms' => [(int) $year_term->term_id]],
+                    ];
+                } else {
+                    $query_args['cat'] = $cat->term_id;
+                }
+
+                $query = new WP_Query($query_args);
 
                 if (!$query->have_posts()) continue;
                 ?>

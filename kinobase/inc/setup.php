@@ -279,6 +279,12 @@ function kinobase_add_rewrite_rules(): void
     // year only
     add_rewrite_rule("^{$b}/{$y}/?$",
         'index.php?category_name=$matches[1]&kb_year=$matches[2]', 'top');
+
+    // homepage filtered by year: /2022/ and /2022/page/2/
+    add_rewrite_rule('^([0-9]{4})/page/([0-9]+)/?$',
+        'index.php?kb_home_year=$matches[1]&paged=$matches[2]', 'top');
+    add_rewrite_rule('^([0-9]{4})/?$',
+        'index.php?kb_home_year=$matches[1]', 'top');
 }
 
 add_filter('query_vars', 'kinobase_query_vars');
@@ -287,7 +293,20 @@ function kinobase_query_vars(array $vars): array
 {
     $vars[] = 'kb_year';
     $vars[] = 'kb_genre';
+    $vars[] = 'kb_home_year';
     return $vars;
+}
+
+// Use front-page.php template for /{year}/ URLs
+add_filter('template_include', 'kinobase_year_home_template');
+
+function kinobase_year_home_template(string $template): string
+{
+    if (get_query_var('kb_home_year')) {
+        $t = locate_template('front-page.php');
+        if ($t) return $t;
+    }
+    return $template;
 }
 
 add_action('pre_get_posts', 'kinobase_filter_archive');
