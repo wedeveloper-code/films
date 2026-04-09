@@ -250,7 +250,13 @@ ul, ol { list-style: none; }
 /* --- Hero / Page Heading ----------------------------------- */
 .catalog-heading {
   margin-bottom: 2.5rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
+.catalog-heading-left { flex: 1; min-width: 0; }
 .catalog-title {
   font-size: clamp(1.75rem, 4vw, 2.5rem);
   font-weight: 700;
@@ -1618,6 +1624,179 @@ a.mobile-page-num:hover { background: var(--border); color: var(--text); }
   transition: background 0.2s;
 }
 .favorites-back-btn:hover { background: var(--brand-hover); }
+
+/* ============================================================
+   Filter panel (sliding two-screen filter on archive pages)
+   ============================================================ */
+.filter-panel-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* "Фильтры" trigger button */
+.filter-panel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  color: var(--text);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+.filter-panel-btn svg { width: 1rem; height: 1rem; color: var(--text-muted); }
+.filter-panel-btn:hover { border-color: var(--brand); }
+.filter-panel-btn.active { border-color: var(--brand); background: var(--brand); color: #fff; }
+.filter-panel-btn.active svg { color: #fff; }
+.filter-panel-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  background: var(--brand);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0 0.2rem;
+}
+.filter-panel-btn.active .filter-panel-badge { background: rgba(255,255,255,0.35); }
+
+/* Panel container */
+.filter-panel {
+  display: none;
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  width: 240px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,.28);
+  overflow: hidden;
+  z-index: 150;
+}
+.filter-panel.open { display: block; }
+
+/* Individual screens */
+.filter-screen { display: none; flex-direction: column; }
+.filter-screen.active { display: flex; }
+
+.filter-screen-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+.filter-screen-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.filter-back-btn {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+.filter-back-btn:hover { color: var(--brand); }
+.filter-close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: var(--text-muted);
+  padding: 0 0.1rem;
+  transition: color 0.15s;
+}
+.filter-close-btn:hover { color: var(--text); }
+
+/* Category list (screen 1) */
+.filter-cat-list { list-style: none; padding: 0.5rem 0; margin: 0; }
+.filter-cat-list li { border-bottom: 1px solid var(--border); }
+.filter-cat-list li:last-child { border-bottom: none; }
+.filter-cat-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--text);
+  text-align: left;
+  transition: background 0.12s;
+}
+.filter-cat-btn:hover { background: var(--bg-card2); }
+.filter-cat-arrow { color: var(--text-muted); font-size: 1.1rem; }
+.filter-selected-val {
+  font-size: 0.8rem;
+  color: var(--brand);
+  font-weight: 600;
+  margin-left: auto;
+  padding-right: 0.25rem;
+}
+
+/* Sub-item list (screen 2/3) */
+.filter-sub-list {
+  list-style: none;
+  padding: 0.5rem 0;
+  margin: 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.filter-sub-list li { border-bottom: 1px solid var(--border); }
+.filter-sub-list li:last-child { border-bottom: none; }
+.filter-sub-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 1rem;
+  font-size: 0.875rem;
+  color: var(--text);
+  text-decoration: none;
+  transition: background 0.12s, color 0.12s;
+}
+.filter-sub-link:hover { background: var(--bg-card2); }
+.filter-sub-link.active { color: var(--brand); font-weight: 600; }
+.filter-sub-check { color: var(--brand); font-size: 0.9rem; }
+
+/* Footer (reset button) */
+.filter-panel-footer {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border);
+}
+.filter-reset-btn {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: border-color 0.15s, color 0.15s;
+  cursor: pointer;
+}
+.filter-reset-btn:hover { border-color: var(--brand); color: var(--brand); }
 
 /* ============================================================
    Nav dropdown (year / genre filters in primary nav)

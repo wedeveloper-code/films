@@ -617,4 +617,58 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    /* ============================================================
+       19. FILTER PANEL (sliding two-screen filter on archive pages)
+       ============================================================ */
+    var filterBtn   = document.getElementById('js-filter-btn');
+    var filterPanel = document.getElementById('js-filter-panel');
+
+    if (filterBtn && filterPanel) {
+        filterBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var isOpen = filterPanel.classList.toggle('open');
+            filterBtn.classList.toggle('active', isOpen);
+            filterBtn.setAttribute('aria-expanded', String(isOpen));
+            if (isOpen) showFilterScreen('filter-screen-main');
+        });
+
+        document.addEventListener('click', function (e) {
+            if (filterPanel.classList.contains('open') &&
+                !filterPanel.contains(e.target) &&
+                !filterBtn.contains(e.target)) {
+                closeFilterPanel();
+            }
+        });
+
+        filterPanel.querySelectorAll('.filter-close-btn').forEach(function (btn) {
+            btn.addEventListener('click', closeFilterPanel);
+        });
+
+        filterPanel.querySelectorAll('.filter-cat-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () { showFilterScreen(this.dataset.target); });
+        });
+
+        filterPanel.querySelectorAll('.filter-back-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () { showFilterScreen(this.dataset.target); });
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeFilterPanel();
+        });
+
+        function showFilterScreen(id) {
+            filterPanel.querySelectorAll('.filter-screen').forEach(function (s) {
+                s.classList.remove('active');
+            });
+            var t = document.getElementById(id);
+            if (t) t.classList.add('active');
+        }
+
+        function closeFilterPanel() {
+            filterPanel.classList.remove('open');
+            filterBtn.classList.remove('active');
+            filterBtn.setAttribute('aria-expanded', 'false');
+        }
+    }
+
 }); // end DOMContentLoaded
