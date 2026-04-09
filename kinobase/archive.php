@@ -87,6 +87,13 @@ if ($is_cat) {
         </nav>
         <?php endif; ?>
 
+        <?php
+        global $wp_query;
+        $current_page = max(1, get_query_var('paged'));
+        $max_pages    = (int) $wp_query->max_num_pages;
+        $next_url     = $current_page < $max_pages ? get_pagenum_link($current_page + 1) : '';
+        ?>
+
         <?php if (have_posts()) : ?>
             <div class="movie-grid">
                 <?php
@@ -99,11 +106,52 @@ if ($is_cat) {
                     ]);
                 endwhile;
                 ?>
+                <?php if ($next_url) : ?>
+                <article class="movie-card card-goto">
+                    <a href="<?php echo esc_url($next_url); ?>" class="card-goto-link">
+                        <div class="card-goto-inner">
+                            <div class="card-goto-arrow">›</div>
+                            <div class="card-goto-text"><?php esc_html_e('Следующая страница', 'kinobase'); ?></div>
+                        </div>
+                    </a>
+                </article>
+                <?php endif; ?>
             </div>
 
             <div class="pagination">
                 <?php the_posts_pagination(['prev_text' => '&laquo;', 'next_text' => '&raquo;']); ?>
             </div>
+
+            <?php if ($max_pages > 1) : ?>
+            <nav class="mobile-page-list" aria-label="<?php esc_attr_e('Страницы', 'kinobase'); ?>">
+                <?php if ($current_page > 1) : ?>
+                <a href="<?php echo esc_url(get_pagenum_link($current_page - 1)); ?>" class="mobile-page-num">&laquo;</a>
+                <?php endif; ?>
+                <?php
+                // Show: first, nearby pages, last — with ellipsis
+                $links = paginate_links([
+                    'prev_text' => '',
+                    'next_text' => '',
+                    'type'      => 'array',
+                    'end_size'  => 1,
+                    'mid_size'  => 2,
+                    'current'   => $current_page,
+                    'total'     => $max_pages,
+                ]);
+                if ($links) {
+                    foreach ($links as $link) {
+                        // Convert WP's <a>/<span> to our mobile-page-num class
+                        $link = preg_replace('/class="([^"]*page-numbers current[^"]*)"/', 'class="mobile-page-num current"', $link);
+                        $link = preg_replace('/class="([^"]*page-numbers[^"]*)"/', 'class="mobile-page-num"', $link);
+                        echo $link;
+                    }
+                }
+                ?>
+                <?php if ($current_page < $max_pages) : ?>
+                <a href="<?php echo esc_url(get_pagenum_link($current_page + 1)); ?>" class="mobile-page-num">&raquo;</a>
+                <?php endif; ?>
+            </nav>
+            <?php endif; ?>
 
         <?php else : ?>
             <div class="no-results">

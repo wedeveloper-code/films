@@ -82,6 +82,20 @@ get_header();
                         endwhile;
                         wp_reset_postdata();
                         ?>
+                        <article class="movie-card card-goto">
+                            <a href="<?php echo esc_url($cat_link); ?>" class="card-goto-link">
+                                <div class="card-goto-inner">
+                                    <div class="card-goto-arrow">›</div>
+                                    <div class="card-goto-text">
+                                        <?php printf(
+                                            /* translators: %s: category name */
+                                            esc_html__('Смотреть все %s', 'kinobase'),
+                                            esc_html($label)
+                                        ); ?>
+                                    </div>
+                                </div>
+                            </a>
+                        </article>
                     </div>
                 </section>
                 <?php

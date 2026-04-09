@@ -41,6 +41,32 @@ get_header();
                 <?php the_posts_pagination(['prev_text' => '&laquo;', 'next_text' => '&raquo;']); ?>
             </div>
 
+            <?php
+            global $wp_query;
+            $s_current = max(1, get_query_var('paged'));
+            $s_max     = (int) $wp_query->max_num_pages;
+            if ($s_max > 1) :
+            ?>
+            <nav class="mobile-page-list" aria-label="<?php esc_attr_e('Страницы', 'kinobase'); ?>">
+                <?php if ($s_current > 1) : ?>
+                <a href="<?php echo esc_url(get_pagenum_link($s_current - 1)); ?>" class="mobile-page-num">&laquo;</a>
+                <?php endif; ?>
+                <?php
+                $links = paginate_links(['prev_text'=>'','next_text'=>'','type'=>'array','end_size'=>1,'mid_size'=>2,'current'=>$s_current,'total'=>$s_max]);
+                if ($links) {
+                    foreach ($links as $link) {
+                        $link = preg_replace('/class="([^"]*page-numbers current[^"]*)"/', 'class="mobile-page-num current"', $link);
+                        $link = preg_replace('/class="([^"]*page-numbers[^"]*)"/', 'class="mobile-page-num"', $link);
+                        echo $link;
+                    }
+                }
+                ?>
+                <?php if ($s_current < $s_max) : ?>
+                <a href="<?php echo esc_url(get_pagenum_link($s_current + 1)); ?>" class="mobile-page-num">&raquo;</a>
+                <?php endif; ?>
+            </nav>
+            <?php endif; ?>
+
         <?php else : ?>
 
             <div class="no-results">
