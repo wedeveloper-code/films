@@ -671,4 +671,58 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    /* ============================================================
+       20. DESKTOP FILTER BAR DROPDOWNS (data-fb-toggle)
+       ============================================================ */
+    var fbBtns = document.querySelectorAll('[data-fb-toggle]');
+
+    if (fbBtns.length) {
+        fbBtns.forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var targetId = btn.getAttribute('data-fb-toggle');
+                var drop = document.getElementById(targetId);
+                if (!drop) return;
+
+                var isOpen = drop.classList.contains('open');
+
+                // Close all other drops
+                document.querySelectorAll('.filter-bar-drop.open').forEach(function (d) {
+                    d.classList.remove('open');
+                });
+                document.querySelectorAll('[data-fb-toggle]').forEach(function (b) {
+                    b.setAttribute('aria-expanded', 'false');
+                });
+
+                // Toggle target
+                if (!isOpen) {
+                    drop.classList.add('open');
+                    btn.setAttribute('aria-expanded', 'true');
+                }
+            });
+        });
+
+        // Close on outside click
+        document.addEventListener('click', function () {
+            document.querySelectorAll('.filter-bar-drop.open').forEach(function (d) {
+                d.classList.remove('open');
+            });
+            document.querySelectorAll('[data-fb-toggle]').forEach(function (b) {
+                b.setAttribute('aria-expanded', 'false');
+            });
+        });
+
+        // Close on Escape
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.filter-bar-drop.open').forEach(function (d) {
+                    d.classList.remove('open');
+                });
+                document.querySelectorAll('[data-fb-toggle]').forEach(function (b) {
+                    b.setAttribute('aria-expanded', 'false');
+                });
+            }
+        });
+    }
+
 }); // end DOMContentLoaded
