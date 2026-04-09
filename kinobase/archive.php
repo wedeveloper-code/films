@@ -22,17 +22,15 @@ $main_cat_slug = ($is_cat && in_array($queried->slug, $main_slugs, true)) ? $que
 $filter_years  = [];
 $filter_genres = [];
 if ($main_cat_slug) {
-    $year_parent  = get_term_by('slug', 'god', 'category')
-                 ?: get_term_by('name', 'Год', 'category');
-    $genre_parent = get_term_by('slug', 'zhanry', 'category')
-                 ?: get_term_by('name', 'Жанры', 'category');
+    $year_parent  = kinobase_get_year_parent();
+    $genre_parent = kinobase_get_genre_parent();
 
-    if ($year_parent && !is_wp_error($year_parent)) {
+    if ($year_parent) {
         $r            = get_terms(['taxonomy' => 'category', 'parent' => $year_parent->term_id,
                                     'hide_empty' => true, 'orderby' => 'name', 'order' => 'DESC']);
         $filter_years = !is_wp_error($r) ? $r : [];
     }
-    if ($genre_parent && !is_wp_error($genre_parent)) {
+    if ($genre_parent) {
         $r             = get_terms(['taxonomy' => 'category', 'parent' => $genre_parent->term_id,
                                      'hide_empty' => true]);
         $filter_genres = !is_wp_error($r) ? $r : [];

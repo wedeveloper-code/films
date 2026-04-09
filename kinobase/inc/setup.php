@@ -323,6 +323,40 @@ function kinobase_filter_archive(WP_Query $query): void
 }
 
 /**
+ * Find the parent category for years (tries multiple slug/name variants).
+ */
+function kinobase_get_year_parent(): ?WP_Term
+{
+    static $cache = false;
+    if ($cache !== false) return $cache ?: null;
+    $t = get_term_by('slug', 'год', 'category')
+      ?: get_term_by('slug', 'god', 'category')
+      ?: get_term_by('slug', 'gody', 'category')
+      ?: get_term_by('slug', 'years', 'category')
+      ?: get_term_by('name', 'Год', 'category')
+      ?: get_term_by('name', 'Годы', 'category')
+      ?: get_term_by('name', 'Год выпуска', 'category');
+    $cache = ($t && !is_wp_error($t)) ? $t : null;
+    return $cache;
+}
+
+/**
+ * Find the parent category for genres (tries multiple slug/name variants).
+ */
+function kinobase_get_genre_parent(): ?WP_Term
+{
+    static $cache = false;
+    if ($cache !== false) return $cache ?: null;
+    $t = get_term_by('slug', 'жанры', 'category')
+      ?: get_term_by('slug', 'zhanry', 'category')
+      ?: get_term_by('slug', 'genres', 'category')
+      ?: get_term_by('name', 'Жанры', 'category')
+      ?: get_term_by('name', 'Жанр', 'category');
+    $cache = ($t && !is_wp_error($t)) ? $t : null;
+    return $cache;
+}
+
+/**
  * Build a filtered category URL.
  * Pattern: /category/{main}/{year}/genres/{genre}/
  */
@@ -366,18 +400,16 @@ function kinobase_nav_with_dropdowns(): void
     }
 
     // Fetch year/genre terms once
-    $year_parent  = get_term_by('slug', 'god', 'category')
-                 ?: get_term_by('name', 'Год', 'category');
-    $genre_parent = get_term_by('slug', 'zhanry', 'category')
-                 ?: get_term_by('name', 'Жанры', 'category');
+    $year_parent  = kinobase_get_year_parent();
+    $genre_parent = kinobase_get_genre_parent();
 
     $years = $genres = [];
-    if ($year_parent && !is_wp_error($year_parent)) {
+    if ($year_parent) {
         $r     = get_terms(['taxonomy' => 'category', 'parent' => $year_parent->term_id,
                              'hide_empty' => true, 'orderby' => 'name', 'order' => 'DESC', 'number' => 20]);
         $years = !is_wp_error($r) ? $r : [];
     }
-    if ($genre_parent && !is_wp_error($genre_parent)) {
+    if ($genre_parent) {
         $r      = get_terms(['taxonomy' => 'category', 'parent' => $genre_parent->term_id,
                               'hide_empty' => true, 'number' => 40]);
         $genres = !is_wp_error($r) ? $r : [];
