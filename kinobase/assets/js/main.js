@@ -76,11 +76,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /* ============================================================
-       4. SETTINGS DROPDOWN (click-based for mobile)
+       4. SETTINGS DROPDOWN (click-based, gap prevents premature close)
        ============================================================ */
     var settingsMenu = document.getElementById('settings-menu');
     if (settingsMenu) {
-        var settingsBtn = settingsMenu.querySelector('.icon-btn');
         settingsMenu.addEventListener('click', function (e) {
             e.stopPropagation();
             settingsMenu.classList.toggle('open');
@@ -88,6 +87,13 @@ document.addEventListener('DOMContentLoaded', function () {
         document.addEventListener('click', function () {
             settingsMenu.classList.remove('open');
         });
+        // Keep open while mouse is over dropdown
+        var settingsDrop = settingsMenu.querySelector('.settings-dropdown');
+        if (settingsDrop) {
+            settingsDrop.addEventListener('click', function (e) {
+                e.stopPropagation();
+            });
+        }
     }
 
     /* ============================================================
@@ -328,5 +334,184 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
         });
     }
+
+    /* ============================================================
+       12. SINGLE MOVIE — POSTER NAVIGATION
+       ============================================================ */
+    var posterViewer = document.getElementById('single-poster-viewer');
+    if (posterViewer) {
+        var posterImgs   = posterViewer.querySelectorAll('.single-poster-img');
+        var indicators   = posterViewer.querySelectorAll('.single-indicator');
+        var thumbsWrap   = document.getElementById('single-thumbs');
+        var thumbBtns    = thumbsWrap ? thumbsWrap.querySelectorAll('.single-thumb') : [];
+        var prevBtn      = document.getElementById('poster-prev');
+        var nextBtn      = document.getElementById('poster-next');
+        var currentIdx   = 0;
+        var total        = posterImgs.length;
+
+        function goToSlide(idx) {
+            if (total === 0) return;
+            idx = ((idx % total) + total) % total;
+            posterImgs.forEach(function (img, i) { img.classList.toggle('active', i === idx); });
+            indicators.forEach(function (dot, i) { dot.classList.toggle('active', i === idx); });
+            thumbBtns.forEach(function (btn, i) { btn.classList.toggle('active', i === idx); });
+            currentIdx = idx;
+        }
+
+        if (prevBtn) prevBtn.addEventListener('click', function () { goToSlide(currentIdx - 1); });
+        if (nextBtn) nextBtn.addEventListener('click', function () { goToSlide(currentIdx + 1); });
+
+        indicators.forEach(function (dot) {
+            dot.addEventListener('click', function () { goToSlide(parseInt(dot.dataset.index, 10)); });
+        });
+        thumbBtns.forEach(function (btn) {
+            btn.addEventListener('click', function () { goToSlide(parseInt(btn.dataset.index, 10)); });
+        });
+
+        // Touch swipe on poster
+        var swipeStartX = 0;
+        posterViewer.addEventListener('touchstart', function (e) {
+            swipeStartX = e.changedTouches[0].clientX;
+        }, { passive: true });
+        posterViewer.addEventListener('touchend', function (e) {
+            var dx = e.changedTouches[0].clientX - swipeStartX;
+            if (Math.abs(dx) > 40) goToSlide(dx < 0 ? currentIdx + 1 : currentIdx - 1);
+        }, { passive: true });
+    }
+
+    /* ============================================================
+       13. REVIEW FORM (AJAX submit)
+       ============================================================ */
+    var reviewForm = document.getElementById('review-form');
+    if (reviewForm && typeof KinoBase !== 'undefined') {
+        var reviewSubmit  = document.getElementById('review-submit');
+        var reviewAlert   = document.getElementById('review-alert');
+        var reviewList    = document.getElementById('review-list');
+
+        function setReviewAlert(msg, type) {
+            reviewAlert.textContent = msg;
+            reviewAlert.className = 'review-alert ' + type;
+        }
+
+        reviewForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            var author  = reviewForm.querySelector('[name="review_author"]').value.trim();
+            var text    = reviewForm.querySelector('[name="review_text"]').value.trim();
+            var rating  = reviewForm.querySelector('[name="review_rating"]').value;
+            var captcha = reviewForm.querySelector('[name="captcha_answer"]').value.trim();
+
+            if (!author || !text || !captcha) {
+                setReviewAlert('Пожалуйста, заполните все поля.', 'error');
+                return;
+            }
+
+            reviewSubmit.disabled = true;
+            reviewSubmit.classList.add('loading');
+            reviewAlert.className = 'review-alert';
+
+            var fd = new FormData(reviewForm);
+            fd.append('action', 'kinobase_review');
+
+            fetch(KinoBase.ajaxUrl, { method: 'POST', body: fd, credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        setReviewAlert(data.data.message, 'success');
+                        reviewForm.reset();
+                        if (data.data.html) {
+                            if (!reviewList) {
+                                reviewList = document.createElement('div');
+                                reviewList.className = 'review-list';
+                                reviewList.id = 'review-list';
+                                reviewForm.closest('.single-reviews').appendChild(reviewList);
+                            }
+                            var tmp = document.createElement('div');
+                            tmp.innerHTML = data.data.html;
+                            reviewList.insertBefore(tmp.firstChild, reviewList.firstChild);
+                        }
+                    } else {
+                        setReviewAlert(data.data.message || 'Ошибка. Попробуйте позже.', 'error');
+                    }
+                })
+                .catch(function () {
+                    setReviewAlert('Ошибка соединения. Попробуйте позже.', 'error');
+                })
+                .finally(function () {
+                    reviewSubmit.disabled = false;
+                    reviewSubmit.classList.remove('loading');
+                });
+        });
+    }
+
+    /* ============================================================
+       14. BURGER MENU
+       ============================================================ */
+    var burgerBtn  = document.getElementById('burger-btn');
+    var mobileNav  = document.getElementById('mobile-nav');
+
+    if (burgerBtn && mobileNav) {
+        burgerBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var open = mobileNav.classList.toggle('open');
+            burgerBtn.classList.toggle('open', open);
+            burgerBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            document.body.style.overflow = open ? 'hidden' : '';
+        });
+
+        // Close on outside click
+        document.addEventListener('click', function (e) {
+            if (mobileNav.classList.contains('open') && !mobileNav.contains(e.target) && e.target !== burgerBtn) {
+                mobileNav.classList.remove('open');
+                burgerBtn.classList.remove('open');
+                burgerBtn.setAttribute('aria-expanded', 'false');
+                document.body.style.overflow = '';
+            }
+        });
+
+        // Close on link click
+        mobileNav.querySelectorAll('a').forEach(function (link) {
+            link.addEventListener('click', function () {
+                mobileNav.classList.remove('open');
+                burgerBtn.classList.remove('open');
+                document.body.style.overflow = '';
+            });
+        });
+    }
+
+    /* ============================================================
+       15. GALLERY CLICK → NAVIGATE TO POST
+       ============================================================ */
+    document.addEventListener('click', function (e) {
+        var gallery = e.target.closest('.movie-gallery');
+        if (!gallery || !gallery.dataset.href) return;
+        // Don't navigate when clicking interactive elements on the poster
+        if (e.target.closest('.fav-btn, .poster-actions, .poster-badges, .views-badge')) return;
+        window.location.href = gallery.dataset.href;
+    });
+
+    /* ============================================================
+       16. MOBILE GALLERY SWIPE (on movie cards)
+       ============================================================ */
+    document.querySelectorAll('.movie-gallery').forEach(function (gallery) {
+        var swipeX = 0;
+        gallery.addEventListener('touchstart', function (e) {
+            swipeX = e.changedTouches[0].clientX;
+        }, { passive: true });
+        gallery.addEventListener('touchend', function (e) {
+            var dx = e.changedTouches[0].clientX - swipeX;
+            if (Math.abs(dx) < 30) return;
+            var zones = gallery.querySelectorAll('.gallery-zone');
+            var imgs  = gallery.querySelectorAll('.gallery-img');
+            var fills = gallery.querySelectorAll('.indicator-fill');
+            var cur   = 0;
+            imgs.forEach(function (img, i) { if (img.classList.contains('active')) cur = i; });
+            var next = dx < 0 ? Math.min(cur + 1, imgs.length - 1) : Math.max(cur - 1, 0);
+            imgs.forEach(function (img) { img.classList.remove('active'); });
+            fills.forEach(function (f) { f.style.width = '0'; });
+            if (imgs[next]) imgs[next].classList.add('active');
+            if (fills[next]) fills[next].style.width = '100%';
+        }, { passive: true });
+    });
 
 }); // end DOMContentLoaded

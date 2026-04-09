@@ -77,31 +77,53 @@
                     </svg>
                 </button>
 
-                <div class="settings-dropdown" role="menu">
-                    <?php if (is_user_logged_in()) : ?>
-                        <a href="<?php echo esc_url(wp_logout_url(home_url('/'))); ?>" class="dropdown-item" role="menuitem">
-                            <?php esc_html_e('Выйти', 'kinobase'); ?>
-                        </a>
-                        <a href="<?php echo esc_url(admin_url('profile.php')); ?>" class="dropdown-item" role="menuitem">
-                            <?php esc_html_e('Профиль', 'kinobase'); ?>
-                        </a>
-                    <?php else : ?>
-                        <a href="<?php echo esc_url(wp_login_url(get_permalink())); ?>" class="dropdown-item" role="menuitem">
-                            <?php esc_html_e('Войти', 'kinobase'); ?>
-                        </a>
-                        <a href="<?php echo esc_url(wp_registration_url()); ?>" class="dropdown-item" role="menuitem">
-                            <?php esc_html_e('Регистрация', 'kinobase'); ?>
-                        </a>
-                    <?php endif; ?>
-                    <div class="dropdown-divider"></div>
-                    <button id="theme-toggle" class="dropdown-item" role="menuitem">
-                        <?php esc_html_e('Тема', 'kinobase'); ?>
-                        <span id="theme-icon" class="theme-icon">🌙</span>
-                    </button>
+                <div class="settings-dropdown">
+                    <div class="settings-dropdown-inner" role="menu">
+                        <?php if (is_user_logged_in()) : ?>
+                            <a href="<?php echo esc_url(wp_logout_url(home_url('/'))); ?>" class="dropdown-item" role="menuitem">
+                                <?php esc_html_e('Выйти', 'kinobase'); ?>
+                            </a>
+                            <a href="<?php echo esc_url(admin_url('profile.php')); ?>" class="dropdown-item" role="menuitem">
+                                <?php esc_html_e('Профиль', 'kinobase'); ?>
+                            </a>
+                        <?php else : ?>
+                            <a href="<?php echo esc_url(wp_login_url(get_permalink())); ?>" class="dropdown-item" role="menuitem">
+                                <?php esc_html_e('Войти', 'kinobase'); ?>
+                            </a>
+                            <a href="<?php echo esc_url(wp_registration_url()); ?>" class="dropdown-item" role="menuitem">
+                                <?php esc_html_e('Регистрация', 'kinobase'); ?>
+                            </a>
+                        <?php endif; ?>
+                        <div class="dropdown-divider"></div>
+                        <button id="theme-toggle" class="dropdown-item" role="menuitem">
+                            <?php esc_html_e('Тема', 'kinobase'); ?>
+                            <span id="theme-icon" class="theme-icon">🌙</span>
+                        </button>
+                    </div>
                 </div>
             </div>
+
+            <!-- Burger button (mobile only) -->
+            <button id="burger-btn" class="burger-btn" aria-label="<?php esc_attr_e('Меню', 'kinobase'); ?>" aria-expanded="false" aria-controls="mobile-nav">
+                <span class="burger-line"></span>
+                <span class="burger-line"></span>
+                <span class="burger-line"></span>
+            </button>
         </div>
 
     </div>
 </header>
-<!-- /Site Header -->
+
+<!-- Mobile Navigation Drawer -->
+<nav id="mobile-nav" class="mobile-nav" aria-label="<?php esc_attr_e('Мобильное меню', 'kinobase'); ?>">
+    <?php
+    wp_nav_menu([
+        'theme_location' => 'primary',
+        'container'      => false,
+        'menu_class'     => 'mobile-nav-list',
+        'items_wrap'     => '<ul class="mobile-nav-list">%3$s</ul>',
+        'fallback_cb'    => 'kinobase_mobile_fallback_menu',
+    ]);
+    ?>
+</nav>
+<!-- /Mobile Navigation Drawer -->

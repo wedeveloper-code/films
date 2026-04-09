@@ -60,7 +60,7 @@ $views_fmt = $views >= 1000
 <article class="movie-card" data-post-id="<?php echo esc_attr((string) $post_id); ?>">
 
     <!-- Gallery -->
-    <div class="movie-gallery">
+    <div class="movie-gallery" data-href="<?php echo esc_url($permalink); ?>">
 
         <?php
         $img_count = count($gallery_ids);

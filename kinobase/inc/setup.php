@@ -118,6 +118,27 @@ function kinobase_fallback_menu(): void
 }
 
 /**
+ * Mobile fallback nav — outputs <li><a> links for mobile drawer.
+ */
+function kinobase_mobile_fallback_menu(): void
+{
+    $cats = [
+        ['slug' => 'films',  'name' => 'Фильмы'],
+        ['slug' => 'series', 'name' => 'Сериалы'],
+        ['slug' => 'tv',     'name' => 'Телепередачи'],
+        ['slug' => 'new',    'name' => 'Новинки'],
+    ];
+    echo '<ul class="mobile-nav-list">';
+    foreach ($cats as $c) {
+        $cat = get_category_by_slug($c['slug'])
+            ?: get_term_by('name', $c['name'], 'category');
+        $url = $cat ? get_category_link($cat->term_id) : home_url('/');
+        echo '<li><a href="' . esc_url($url) . '">' . esc_html(__($c['name'], 'kinobase')) . '</a></li>';
+    }
+    echo '</ul>';
+}
+
+/**
  * Simple nav walker — outputs bare <a> links without extra <li> wrappers.
  * Defined here (not in header.php) to prevent redeclaration if template is loaded twice.
  */
