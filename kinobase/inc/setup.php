@@ -41,8 +41,9 @@ function kinobase_setup(): void
 
     // Menus
     register_nav_menus([
-        'primary' => __('Главное меню', 'kinobase'),
-        'footer'  => __('Подвал', 'kinobase'),
+        'primary'          => __('Верхнее меню (рубрики)', 'kinobase'),
+        'kinobase_filters' => __('Меню фильтров (Год, Жанр, Качество…)', 'kinobase'),
+        'footer'           => __('Меню подвала', 'kinobase'),
     ]);
 
     // Wide alignment
@@ -68,11 +69,17 @@ function kinobase_get_movie_count(): int
 {
     $count = get_transient('kinobase_movie_count');
     if ($count === false) {
-        $count = (int) wp_count_posts('post')->publish;
+        $posts  = (int) (wp_count_posts('post')->publish ?? 0);
+        $movies = (int) (wp_count_posts('movie')->publish ?? 0);
+        $count  = $posts + $movies;
         set_transient('kinobase_movie_count', $count, HOUR_IN_SECONDS * 6);
     }
     return (int) $count;
 }
+
+// Invalidate count when movie CPT posts change too
+add_action('save_post_movie', 'kinobase_invalidate_movie_count');
+add_action('delete_post',     'kinobase_invalidate_movie_count');
 
 // Remove category prefix from archive title
 add_filter('get_the_archive_title', function (string $title): string {
@@ -81,6 +88,36 @@ add_filter('get_the_archive_title', function (string $title): string {
     }
     return $title;
 });
+
+// Reduce review rate-limit flood: our ajax handler already limits to 1/hour.
+// This disables WordPress's own 15-second flood check for wp_insert_comment calls.
+add_filter('comment_flood_filter', '__return_false');
+
+/* ============================================================
+   Customizer: footer copyright text
+   ============================================================ */
+add_action('customize_register', 'kinobase_customizer_register');
+
+function kinobase_customizer_register(WP_Customize_Manager $wp_customize): void
+{
+    $wp_customize->add_section('kinobase_footer', [
+        'title'    => __('Подвал сайта', 'kinobase'),
+        'priority' => 120,
+    ]);
+
+    $wp_customize->add_setting('kinobase_footer_copyright', [
+        'default'           => '',
+        'sanitize_callback' => 'wp_kses_post',
+        'transport'         => 'refresh',
+    ]);
+
+    $wp_customize->add_control('kinobase_footer_copyright', [
+        'label'       => __('Текст авторского права (подвал)', 'kinobase'),
+        'description' => __('Оставьте пустым для использования стандартного текста.', 'kinobase'),
+        'section'     => 'kinobase_footer',
+        'type'        => 'textarea',
+    ]);
+}
 
 // Add body classes for theme
 add_filter('body_class', function (array $classes): array {

@@ -78,12 +78,14 @@ while (have_posts()) :
                         <!-- Images -->
                         <?php if (!empty($gallery_ids)) :
                             foreach (array_values($gallery_ids) as $idx => $img_id) :
+                                $full_url = wp_get_attachment_image_url((int) $img_id, 'full');
                                 echo wp_get_attachment_image((int) $img_id, 'movie-poster', false, [
                                     'class'          => 'single-poster-img' . ($idx === 0 ? ' active' : ''),
                                     'alt'            => esc_attr($title . ($idx > 0 ? ' — кадр ' . ($idx + 1) : '')),
                                     'loading'        => $idx < 2 ? 'eager' : 'lazy',
                                     'fetchpriority'  => $idx === 0 ? 'high' : 'auto',
                                     'data-index'     => (string) $idx,
+                                    'data-full'      => esc_url($full_url ?: ''),
                                 ]);
                             endforeach;
                         elseif (has_post_thumbnail()) :
@@ -194,6 +196,34 @@ while (have_posts()) :
                         <?php endforeach; ?>
                         </tbody>
                     </table>
+
+                    <!-- Actor cast -->
+                    <?php
+                    $cast_ids = get_post_meta($post_id, '_movie_cast', true);
+                    if (!is_array($cast_ids)) $cast_ids = [];
+                    $cast_ids = array_filter(array_map('intval', $cast_ids));
+                    if (!empty($cast_ids)) :
+                    ?>
+                    <div class="single-cast">
+                        <h3 class="single-section-label"><?php esc_html_e('В ролях', 'kinobase'); ?></h3>
+                        <div class="cast-list">
+                            <?php foreach ($cast_ids as $actor_id) :
+                                $actor = get_post($actor_id);
+                                if (!$actor || $actor->post_status !== 'publish') continue;
+                                $actor_thumb = get_the_post_thumbnail_url($actor_id, 'thumbnail');
+                            ?>
+                            <a href="<?php echo esc_url(get_permalink($actor_id)); ?>" class="cast-chip">
+                                <?php if ($actor_thumb) : ?>
+                                <img src="<?php echo esc_url($actor_thumb); ?>"
+                                     alt="<?php echo esc_attr($actor->post_title); ?>"
+                                     loading="lazy">
+                                <?php endif; ?>
+                                <span><?php echo esc_html($actor->post_title); ?></span>
+                            </a>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
 
                     <!-- Box office -->
                     <?php if (!empty($box_office) && is_array($box_office)) : ?>
@@ -437,6 +467,22 @@ while (have_posts()) :
         </div><!-- /.single-movie -->
         </div><!-- /.container -->
     </main>
+
+    <!-- Lightbox overlay -->
+    <div class="kb-lightbox" id="kb-lightbox" role="dialog" aria-modal="true" aria-label="<?php esc_attr_e('Просмотр фото', 'kinobase'); ?>">
+        <button class="kb-lb-close" id="kb-lb-close" aria-label="<?php esc_attr_e('Закрыть', 'kinobase'); ?>">✕</button>
+        <span class="kb-lb-counter" id="kb-lb-counter"></span>
+
+        <div class="kb-lb-inner">
+            <button class="kb-lb-nav kb-lb-prev" id="kb-lb-prev" aria-label="<?php esc_attr_e('Предыдущее', 'kinobase'); ?>">&#8249;</button>
+            <img src="" alt="" class="kb-lb-img" id="kb-lb-img">
+            <button class="kb-lb-nav kb-lb-next" id="kb-lb-next" aria-label="<?php esc_attr_e('Следующее', 'kinobase'); ?>">&#8250;</button>
+        </div>
+
+        <div class="kb-lb-thumbs" id="kb-lb-thumbs"></div>
+    </div>
+    <!-- /Lightbox -->
+
     <?php
 endwhile;
 

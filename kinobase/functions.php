@@ -19,7 +19,9 @@ define('KINOBASE_URI', get_template_directory_uri());
 
 // Load theme modules
 require_once KINOBASE_DIR . '/inc/setup.php';
+require_once KINOBASE_DIR . '/inc/post-types.php';
 require_once KINOBASE_DIR . '/inc/enqueue.php';
 require_once KINOBASE_DIR . '/inc/meta-boxes.php';
+require_once KINOBASE_DIR . '/inc/meta-boxes-actor.php';
 require_once KINOBASE_DIR . '/inc/image-optimizer.php';
 require_once KINOBASE_DIR . '/inc/ajax-handlers.php';

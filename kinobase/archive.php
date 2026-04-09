@@ -10,46 +10,19 @@ get_header();
 $queried = get_queried_object();
 $is_cat  = ($queried instanceof WP_Term && $queried->taxonomy === 'category');
 
-// Active URL-based filters (kb_year / kb_genre come from custom rewrite rules)
-$kb_year  = sanitize_text_field(get_query_var('kb_year'));
-$kb_genre = sanitize_text_field(get_query_var('kb_genre'));
+// Active URL of the current category (for filter bar highlighting)
+$active_url = $is_cat ? get_term_link($queried) : '';
+$reset_url  = ''; // No reset link on regular archive pages
 
-// Are we on one of the 4 main category pages?
-$main_slugs    = ['films', 'series', 'tv', 'new'];
-$main_cat_slug = ($is_cat && in_array($queried->slug, $main_slugs, true)) ? $queried->slug : '';
+// Has the admin configured the filters nav menu?
+$has_filter_menu = !empty(kinobase_get_filter_menu_data('kinobase_filters'));
 
-// Fetch year / genre terms for the filter bar
-$filter_years  = [];
-$filter_genres = [];
-if ($main_cat_slug) {
-    $year_parent  = kinobase_get_year_parent();
-    $genre_parent = kinobase_get_genre_parent();
-
-    if ($year_parent) {
-        $r            = get_terms(['taxonomy' => 'category', 'parent' => $year_parent->term_id,
-                                    'hide_empty' => true, 'orderby' => 'name', 'order' => 'DESC']);
-        $filter_years = !is_wp_error($r) ? $r : [];
-    }
-    if ($genre_parent) {
-        $r             = get_terms(['taxonomy' => 'category', 'parent' => $genre_parent->term_id,
-                                     'hide_empty' => true]);
-        $filter_genres = !is_wp_error($r) ? $r : [];
-    }
-}
-
-// Active genre label for heading badge
-$genre_label = '';
-if ($kb_genre) {
-    $genre_term  = get_term_by('slug', $kb_genre, 'category');
-    $genre_label = ($genre_term && !is_wp_error($genre_term)) ? $genre_term->name : $kb_genre;
-}
-
-// Subcategory filter pills (for non-main categories, e.g. Жанры children)
+// Subcategory filter pills (children/siblings of the current category)
 $filter_terms  = [];
 $filter_parent = null;
 $show_all_link = false;
 
-if ($is_cat && !$main_cat_slug) {
+if ($is_cat) {
     $children = get_terms([
         'taxonomy'   => 'category',
         'parent'     => $queried->term_id,
@@ -84,21 +57,7 @@ if ($is_cat && !$main_cat_slug) {
                 <div class="catalog-heading-left">
                     <h1 class="catalog-title">
                         <?php the_archive_title(); ?>
-                        <?php if ($kb_year) : ?>
-                        <span class="active-filter-tag">
-                            <?php echo esc_html($kb_year); ?>
-                            <a href="<?php echo esc_url(kinobase_filter_url($main_cat_slug, '', $kb_genre)); ?>"
-                               class="remove-filter">×</a>
-                        </span>
-                        <?php endif; ?>
-                        <?php if ($kb_genre && $genre_label) : ?>
-                        <span class="active-filter-tag">
-                            <?php echo esc_html($genre_label); ?>
-                            <a href="<?php echo esc_url(kinobase_filter_url($main_cat_slug, $kb_year, '')); ?>"
-                               class="remove-filter">×</a>
-                        </span>
-                        <?php endif; ?>
-                        <?php if ($is_cat && !$kb_year && !$kb_genre) :
+                        <?php if ($is_cat) :
                             $count = (int) $queried->count; ?>
                         <span class="catalog-count">— <strong><?php echo number_format($count); ?></strong>
                         <?php echo esc_html(_n('фильм', 'фильмов', $count, 'kinobase')); ?></span>
@@ -112,159 +71,16 @@ if ($is_cat && !$main_cat_slug) {
                     ?>
                 </div>
 
-                <?php
-                $has_filters  = $main_cat_slug && (!empty($filter_years) || !empty($filter_genres));
-                $active_count = ($kb_year ? 1 : 0) + ($kb_genre ? 1 : 0);
-                if ($has_filters) :
-                ?>
-                <!-- Mobile only: Фильтры button + sliding panel -->
-                <div class="filter-panel-wrap filter-mobile-only">
-                    <button class="filter-panel-btn" id="js-filter-btn" aria-expanded="false" aria-controls="js-filter-panel">
-                        <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6 10a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm2 4a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
-                        <?php esc_html_e('Фильтры', 'kinobase'); ?>
-                        <?php if ($active_count) : ?>
-                        <span class="filter-panel-badge"><?php echo $active_count; ?></span>
-                        <?php endif; ?>
-                    </button>
-
-                    <div class="filter-panel" id="js-filter-panel" role="dialog" aria-label="<?php esc_attr_e('Фильтры', 'kinobase'); ?>">
-                        <div class="filter-screen active" id="filter-screen-main">
-                            <div class="filter-screen-header">
-                                <span class="filter-screen-title"><?php esc_html_e('Фильтры', 'kinobase'); ?></span>
-                                <button class="filter-close-btn" aria-label="<?php esc_attr_e('Закрыть', 'kinobase'); ?>">×</button>
-                            </div>
-                            <ul class="filter-cat-list">
-                                <?php if (!empty($filter_years)) : ?>
-                                <li>
-                                    <button class="filter-cat-btn" data-target="filter-screen-year">
-                                        <span><?php esc_html_e('Год', 'kinobase'); ?></span>
-                                        <?php if ($kb_year) : ?>
-                                        <span class="filter-selected-val"><?php echo esc_html($kb_year); ?></span>
-                                        <?php else : ?>
-                                        <span class="filter-cat-arrow">›</span>
-                                        <?php endif; ?>
-                                    </button>
-                                </li>
-                                <?php endif; ?>
-                                <?php if (!empty($filter_genres)) : ?>
-                                <li>
-                                    <button class="filter-cat-btn" data-target="filter-screen-genre">
-                                        <span><?php esc_html_e('Жанр', 'kinobase'); ?></span>
-                                        <?php if ($genre_label) : ?>
-                                        <span class="filter-selected-val"><?php echo esc_html($genre_label); ?></span>
-                                        <?php else : ?>
-                                        <span class="filter-cat-arrow">›</span>
-                                        <?php endif; ?>
-                                    </button>
-                                </li>
-                                <?php endif; ?>
-                            </ul>
-                            <?php if ($active_count) : ?>
-                            <div class="filter-panel-footer">
-                                <a href="<?php echo esc_url(get_category_link($queried->term_id)); ?>" class="filter-reset-btn">
-                                    <?php esc_html_e('Сбросить', 'kinobase'); ?>
-                                </a>
-                            </div>
-                            <?php endif; ?>
-                        </div>
-
-                        <?php if (!empty($filter_years)) : ?>
-                        <div class="filter-screen" id="filter-screen-year">
-                            <div class="filter-screen-header">
-                                <button class="filter-back-btn" data-target="filter-screen-main">‹ <?php esc_html_e('Год', 'kinobase'); ?></button>
-                                <button class="filter-close-btn">×</button>
-                            </div>
-                            <ul class="filter-sub-list">
-                                <?php foreach ($filter_years as $term) : if (is_wp_error($term)) continue; ?>
-                                <li>
-                                    <a href="<?php echo esc_url(kinobase_filter_url($main_cat_slug, $term->slug, $kb_genre)); ?>"
-                                       class="filter-sub-link<?php echo ($kb_year === $term->slug) ? ' active' : ''; ?>">
-                                        <?php echo esc_html($term->name); ?>
-                                        <?php if ($kb_year === $term->slug) : ?><span class="filter-sub-check">✓</span><?php endif; ?>
-                                    </a>
-                                </li>
-                                <?php endforeach; ?>
-                            </ul>
-                        </div>
-                        <?php endif; ?>
-
-                        <?php if (!empty($filter_genres)) : ?>
-                        <div class="filter-screen" id="filter-screen-genre">
-                            <div class="filter-screen-header">
-                                <button class="filter-back-btn" data-target="filter-screen-main">‹ <?php esc_html_e('Жанр', 'kinobase'); ?></button>
-                                <button class="filter-close-btn">×</button>
-                            </div>
-                            <ul class="filter-sub-list">
-                                <?php foreach ($filter_genres as $term) : if (is_wp_error($term)) continue; ?>
-                                <li>
-                                    <a href="<?php echo esc_url(kinobase_filter_url($main_cat_slug, $kb_year, $term->slug)); ?>"
-                                       class="filter-sub-link<?php echo ($kb_genre === $term->slug) ? ' active' : ''; ?>">
-                                        <?php echo esc_html($term->name); ?>
-                                        <?php if ($kb_genre === $term->slug) : ?><span class="filter-sub-check">✓</span><?php endif; ?>
-                                    </a>
-                                </li>
-                                <?php endforeach; ?>
-                            </ul>
-                        </div>
-                        <?php endif; ?>
-                    </div><!-- .filter-panel -->
-                </div><!-- .filter-panel-wrap.filter-mobile-only -->
-                <?php endif; ?>
+                <?php if ($has_filter_menu) :
+                    kinobase_render_mobile_filter_panel('kinobase_filters', $active_url, $reset_url);
+                endif; ?>
             </div><!-- .catalog-heading-row -->
 
-            <?php if ($has_filters) : ?>
-            <!-- Desktop only: filter bar with individual dropdowns -->
+            <?php if ($has_filter_menu) : ?>
+            <!-- Desktop filter bar — populated from Меню фильтров (wp-admin/nav-menus.php) -->
             <div class="filter-bar filter-desktop-only">
-                <?php if (!empty($filter_years)) : ?>
-                <div class="filter-bar-group">
-                    <button class="filter-bar-btn<?php echo $kb_year ? ' is-active' : ''; ?>" data-fb-toggle="fb-year">
-                        <?php echo $kb_year ? esc_html($kb_year) : esc_html__('Год', 'kinobase'); ?>
-                        <span class="filter-bar-chevron">▾</span>
-                    </button>
-                    <div class="filter-bar-drop" id="fb-year">
-                        <ul>
-                            <?php foreach ($filter_years as $term) : if (is_wp_error($term)) continue; ?>
-                            <li>
-                                <a href="<?php echo esc_url(kinobase_filter_url($main_cat_slug, $term->slug, $kb_genre)); ?>"
-                                   class="<?php echo ($kb_year === $term->slug) ? 'active' : ''; ?>">
-                                    <?php echo esc_html($term->name); ?>
-                                    <?php if ($kb_year === $term->slug) : ?><span>✓</span><?php endif; ?>
-                                </a>
-                            </li>
-                            <?php endforeach; ?>
-                        </ul>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-                <?php if (!empty($filter_genres)) : ?>
-                <div class="filter-bar-group">
-                    <button class="filter-bar-btn<?php echo $kb_genre ? ' is-active' : ''; ?>" data-fb-toggle="fb-genre">
-                        <?php echo ($kb_genre && $genre_label) ? esc_html($genre_label) : esc_html__('Жанр', 'kinobase'); ?>
-                        <span class="filter-bar-chevron">▾</span>
-                    </button>
-                    <div class="filter-bar-drop" id="fb-genre">
-                        <ul>
-                            <?php foreach ($filter_genres as $term) : if (is_wp_error($term)) continue; ?>
-                            <li>
-                                <a href="<?php echo esc_url(kinobase_filter_url($main_cat_slug, $kb_year, $term->slug)); ?>"
-                                   class="<?php echo ($kb_genre === $term->slug) ? 'active' : ''; ?>">
-                                    <?php echo esc_html($term->name); ?>
-                                    <?php if ($kb_genre === $term->slug) : ?><span>✓</span><?php endif; ?>
-                                </a>
-                            </li>
-                            <?php endforeach; ?>
-                        </ul>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-                <?php if ($active_count) : ?>
-                <a href="<?php echo esc_url(get_category_link($queried->term_id)); ?>" class="filter-bar-reset">
-                    × <?php esc_html_e('Сбросить', 'kinobase'); ?>
-                </a>
-                <?php endif; ?>
-            </div><!-- .filter-bar.filter-desktop-only -->
+                <?php kinobase_render_desktop_filter_bar($active_url, $reset_url); ?>
+            </div><!-- .filter-bar -->
             <?php endif; ?>
 
         <?php if (!empty($filter_terms)) : ?>

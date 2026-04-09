@@ -11,6 +11,40 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+/**
+ * Review rate limit: seconds between reviews from the same IP on the same post.
+ * Change this constant to adjust the limit.
+ * 60 = once per minute. 3600 = once per hour.
+ */
+if (!defined('KB_REVIEW_RATE_LIMIT')) {
+    define('KB_REVIEW_RATE_LIMIT', MINUTE_IN_SECONDS);
+}
+
+// Admin notice on edit-comments.php: explains where to change the rate limit
+add_action('admin_notices', 'kinobase_review_rate_admin_notice');
+function kinobase_review_rate_admin_notice(): void
+{
+    $screen = get_current_screen();
+    if (!$screen || $screen->id !== 'edit-comments') {
+        return;
+    }
+    $current   = KB_REVIEW_RATE_LIMIT;
+    $minutes   = round($current / 60, 1);
+    $file_path = 'wp-content/themes/kinobase/inc/ajax-handlers.php';
+    echo '<div class="notice notice-info" style="padding:12px 16px;">'
+        . '<strong>KinoBase — интервал отзывов:</strong> '
+        . esc_html(sprintf(
+            'Один пользователь может оставлять отзыв не чаще, чем раз в %s мин. '
+            . 'Чтобы изменить — откройте файл %s и измените константу KB_REVIEW_RATE_LIMIT (значение в секундах). '
+            . 'Сейчас: %d сек. (%s мин.).',
+            $minutes,
+            $file_path,
+            $current,
+            $minutes
+        ))
+        . '</div>';
+}
+
 // Both logged-in and guest users can increment views
 add_action('wp_ajax_kinobase_increment_views',        'kinobase_ajax_increment_views');
 add_action('wp_ajax_nopriv_kinobase_increment_views', 'kinobase_ajax_increment_views');
@@ -142,7 +176,9 @@ function kinobase_ajax_review(): void
     }
 
     update_comment_meta((int) $comment_id, 'review_rating', $rating);
-    set_transient($rate_key, 1, HOUR_IN_SECONDS);
+    // Rate limit: 1 review per minute per IP per post.
+    // To change the interval: search for KB_REVIEW_RATE_LIMIT in inc/ajax-handlers.php
+    set_transient($rate_key, 1, KB_REVIEW_RATE_LIMIT);
 
     wp_send_json_success([
         'message' => 'Спасибо! Ваш отзыв отправлен на модерацию и появится после проверки.',

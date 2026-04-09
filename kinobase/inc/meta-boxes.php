@@ -15,13 +15,13 @@ add_action('add_meta_boxes', 'kinobase_register_meta_boxes');
 
 function kinobase_register_meta_boxes(): void
 {
-    $post_type = 'post';
+    $post_types = ['post', 'movie'];
 
     add_meta_box(
         'kinobase_gallery',
-        __('Галерея фильма (4 фото)', 'kinobase'),
+        __('Постеры и фото фильма', 'kinobase'),
         'kinobase_render_gallery_box',
-        $post_type,
+        $post_types,
         'normal',
         'high'
     );
@@ -30,7 +30,7 @@ function kinobase_register_meta_boxes(): void
         'kinobase_movie_info',
         __('Информация о фильме', 'kinobase'),
         'kinobase_render_info_box',
-        $post_type,
+        $post_types,
         'normal',
         'high'
     );
@@ -39,7 +39,7 @@ function kinobase_register_meta_boxes(): void
         'kinobase_additional',
         __('Актёры, режиссёры, рейтинг, сборы', 'kinobase'),
         'kinobase_render_additional_box',
-        $post_type,
+        $post_types,
         'normal',
         'high'
     );
@@ -48,7 +48,7 @@ function kinobase_register_meta_boxes(): void
         'kinobase_pricing',
         __('Цены (Аренда и Покупка)', 'kinobase'),
         'kinobase_render_pricing_box',
-        $post_type,
+        $post_types,
         'normal',
         'default'
     );
@@ -57,14 +57,14 @@ function kinobase_register_meta_boxes(): void
         'kinobase_coupon',
         __('Купон на скидку', 'kinobase'),
         'kinobase_render_coupon_box',
-        $post_type,
+        $post_types,
         'side',
         'default'
     );
 }
 
 /**
- * Gallery meta box
+ * Gallery meta box — unlimited photos, drag-and-drop reorder
  */
 function kinobase_render_gallery_box(WP_Post $post): void
 {
@@ -72,78 +72,65 @@ function kinobase_render_gallery_box(WP_Post $post): void
 
     $gallery = get_post_meta($post->ID, 'movie_gallery', true);
     if (!is_array($gallery)) {
-        $gallery = ['', '', '', ''];
+        $gallery = [];
     }
-    $gallery = array_pad($gallery, 4, '');
-
+    $gallery = array_filter(array_map('intval', $gallery));
     ?>
     <div class="kinobase-gallery-meta">
-        <p style="margin-bottom:10px;color:#666;"><?php esc_html_e('Загрузите 4 фотографии фильма. Первая — главный постер.', 'kinobase'); ?></p>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
-            <?php for ($i = 0; $i < 4; $i++) :
-                $img_id = (int) ($gallery[$i] ?? 0);
-                $thumb = $img_id ? wp_get_attachment_image_src($img_id, 'thumbnail') : null;
-                ?>
-                <div class="kinobase-gallery-slot" style="border:2px dashed #ccc;border-radius:6px;padding:8px;text-align:center;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;">
-                    <?php if ($thumb) : ?>
-                        <img src="<?php echo esc_url($thumb[0]); ?>" style="max-height:100px;object-fit:contain;" alt="Photo <?php echo $i + 1; ?>">
-                    <?php else : ?>
-                        <span style="font-size:12px;color:#999;"><?php printf(__('Фото %d', 'kinobase'), $i + 1); ?></span>
-                    <?php endif; ?>
-                    <input type="hidden" name="movie_gallery[<?php echo $i; ?>]" class="kb-img-id" value="<?php echo esc_attr((string) $img_id); ?>">
-                    <button type="button" class="button button-small kb-upload-img" data-slot="<?php echo $i; ?>">
-                        <?php echo $img_id ? __('Заменить', 'kinobase') : __('Загрузить', 'kinobase'); ?>
-                    </button>
-                    <?php if ($img_id) : ?>
-                        <button type="button" class="button button-small kb-remove-img" style="color:#a00;" data-slot="<?php echo $i; ?>">
-                            <?php esc_html_e('Удалить', 'kinobase'); ?>
-                        </button>
-                    <?php endif; ?>
-                </div>
-            <?php endfor; ?>
+        <p style="margin-bottom:10px;color:#666;">
+            <?php esc_html_e('Первое фото — главный постер. Добавьте сколько угодно фотографий.', 'kinobase'); ?>
+        </p>
+        <div id="kb-gallery-wrap" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+            <?php foreach ($gallery as $img_id) :
+                $img_id = (int) $img_id;
+                if (!$img_id) continue;
+                $thumb = wp_get_attachment_image_src($img_id, 'thumbnail');
+                if (!$thumb) continue;
+            ?>
+            <div class="kb-gallery-slot" style="position:relative;border:2px solid #ccc;border-radius:6px;overflow:hidden;width:90px;height:90px;cursor:move;">
+                <img src="<?php echo esc_url($thumb[0]); ?>" style="width:100%;height:100%;object-fit:cover;" alt="">
+                <input type="hidden" name="movie_gallery[]" value="<?php echo esc_attr((string) $img_id); ?>">
+                <button type="button" class="kb-remove-gallery-img"
+                        style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;line-height:1;padding:0;">✕</button>
+            </div>
+            <?php endforeach; ?>
         </div>
+        <button type="button" class="button button-primary" id="kb-gallery-add">
+            <?php esc_html_e('+ Добавить фото', 'kinobase'); ?>
+        </button>
     </div>
     <script>
     jQuery(function($) {
-        var frame;
-        $('.kb-upload-img').on('click', function() {
-            var btn = $(this);
-            var slot = btn.data('slot');
-            var slotEl = btn.closest('.kinobase-gallery-slot');
-
-            frame = wp.media({
-                title: 'Выберите фото ' + (slot+1),
-                button: { text: 'Выбрать' },
-                multiple: false,
+        $('#kb-gallery-add').on('click', function() {
+            var frame = wp.media({
+                title: 'Выберите фото',
+                button: { text: 'Добавить выбранные' },
+                multiple: true,
                 library: { type: 'image' }
             });
-
             frame.on('select', function() {
-                var att = frame.state().get('selection').first().toJSON();
-                slotEl.find('.kb-img-id').val(att.id);
-                var thumb = att.sizes && att.sizes.thumbnail ? att.sizes.thumbnail.url : att.url;
-                slotEl.find('img').remove();
-                slotEl.find('span').remove();
-                $('<img>').attr('src', thumb).css({maxHeight:'100px',objectFit:'contain'}).prependTo(slotEl);
-                btn.text('Заменить');
-                if (!slotEl.find('.kb-remove-img').length) {
-                    $('<button type="button" class="button button-small kb-remove-img" style="color:#a00;" data-slot="'+slot+'">Удалить</button>')
-                        .appendTo(slotEl);
-                }
+                frame.state().get('selection').each(function(att) {
+                    var a = att.toJSON();
+                    var thumb = (a.sizes && a.sizes.thumbnail) ? a.sizes.thumbnail.url : a.url;
+                    var slot = $('<div class="kb-gallery-slot" style="position:relative;border:2px solid #ccc;border-radius:6px;overflow:hidden;width:90px;height:90px;cursor:move;">'
+                        + '<img src="' + thumb + '" style="width:100%;height:100%;object-fit:cover;" alt="">'
+                        + '<input type="hidden" name="movie_gallery[]" value="' + a.id + '">'
+                        + '<button type="button" class="kb-remove-gallery-img" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:12px;line-height:1;padding:0;">✕</button>'
+                        + '</div>');
+                    $('#kb-gallery-wrap').append(slot);
+                });
             });
-
             frame.open();
         });
 
-        $(document).on('click', '.kb-remove-img', function() {
-            var slotEl = $(this).closest('.kinobase-gallery-slot');
-            var slot = $(this).data('slot');
-            slotEl.find('.kb-img-id').val('');
-            slotEl.find('img').remove();
-            slotEl.prepend('<span style="font-size:12px;color:#999;">Фото ' + (slot+1) + '</span>');
-            slotEl.find('.kb-upload-img').text('Загрузить');
-            $(this).remove();
+        $(document).on('click', '.kb-remove-gallery-img', function() {
+            $(this).closest('.kb-gallery-slot').remove();
         });
+
+        // Sortable (drag-and-drop reorder) if jQuery UI available
+        if ($.fn.sortable) {
+            $('#kb-gallery-wrap').sortable({ items: '.kb-gallery-slot', tolerance: 'pointer' });
+        }
     });
     </script>
     <?php
@@ -326,13 +313,13 @@ function kinobase_save_meta_boxes(int $post_id, WP_Post $post): void
     if (!wp_verify_nonce($_POST['kinobase_nonce'], 'kinobase_save_meta')) return;
     if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
     if (!current_user_can('edit_post', $post_id)) return;
-    if ($post->post_type !== 'post') return;
+    if (!in_array($post->post_type, ['post', 'movie'], true)) return;
 
-    // Gallery
-    if (isset($_POST['movie_gallery']) && is_array($_POST['movie_gallery'])) {
-        $gallery = array_map('absint', $_POST['movie_gallery']);
-        update_post_meta($post_id, 'movie_gallery', $gallery);
-    }
+    // Gallery (unlimited photos)
+    $gallery = isset($_POST['movie_gallery']) && is_array($_POST['movie_gallery'])
+        ? array_values(array_filter(array_map('absint', $_POST['movie_gallery'])))
+        : [];
+    update_post_meta($post_id, 'movie_gallery', $gallery);
 
     // Text / number fields
     $text_fields = ['movie_year', 'movie_genre', 'movie_duration', 'movie_quality', 'movie_translation', 'movie_coupon'];
