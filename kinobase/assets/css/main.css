@@ -638,10 +638,10 @@ ul, ol { list-style: none; }
   margin-bottom: 3rem;
 }
 @media (min-width: 768px) {
-  .single-layout { grid-template-columns: 260px 1fr; }
+  .single-layout { grid-template-columns: 300px 1fr; }
 }
 @media (min-width: 1024px) {
-  .single-layout { grid-template-columns: 300px 1fr; }
+  .single-layout { grid-template-columns: 440px 1fr; }
 }
 
 /* Poster viewer */

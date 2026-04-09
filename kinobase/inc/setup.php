@@ -210,3 +210,35 @@ function kinobase_message_column_data(string $column, int $post_id): void
         echo esc_html(wp_trim_words(get_post_field('post_content', $post_id), 12));
     }
 }
+
+/**
+ * Recalculate movie_rating from approved review comments.
+ * Fires when a comment status changes (approve / unapprove / trash / spam).
+ */
+add_action('transition_comment_status', 'kinobase_recalculate_movie_rating', 10, 3);
+
+function kinobase_recalculate_movie_rating(string $new_status, string $old_status, WP_Comment $comment): void
+{
+    $post_id = (int) $comment->comment_post_ID;
+    if (!$post_id || get_post_type($post_id) !== 'post') return;
+
+    $approved_comments = get_comments([
+        'post_id' => $post_id,
+        'status'  => 'approve',
+        'type'    => 'comment',
+        'number'  => 0, // all
+    ]);
+
+    $ratings = [];
+    foreach ($approved_comments as $c) {
+        $r = (int) get_comment_meta((int) $c->comment_ID, 'review_rating', true);
+        if ($r > 0) {
+            $ratings[] = $r;
+        }
+    }
+
+    if (!empty($ratings)) {
+        $avg = array_sum($ratings) / count($ratings);
+        update_post_meta($post_id, 'movie_rating', round($avg, 1));
+    }
+}

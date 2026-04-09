@@ -131,7 +131,7 @@ function kinobase_ajax_review(): void
         'comment_author'   => $author,
         'comment_content'  => $text,
         'comment_type'     => 'comment',
-        'comment_approved' => 1,
+        'comment_approved' => 0, // pending moderation
         'comment_date'     => current_time('mysql'),
         'comment_agent'    => sanitize_text_field($_SERVER['HTTP_USER_AGENT'] ?? ''),
         'comment_author_IP'=> $ip,
@@ -144,22 +144,8 @@ function kinobase_ajax_review(): void
     update_comment_meta((int) $comment_id, 'review_rating', $rating);
     set_transient($rate_key, 1, HOUR_IN_SECONDS);
 
-    $date = date_i18n(get_option('date_format'), time());
     wp_send_json_success([
-        'message' => 'Спасибо за отзыв!',
-        'html'    => sprintf(
-            '<div class="review-item review-item--new">'
-                . '<div class="review-item-header">'
-                . '<span class="review-author">%s</span>'
-                . '<span class="review-score"><span class="review-score-star">★</span>%d/10</span>'
-                . '<span class="review-date">%s</span>'
-                . '</div>'
-                . '<div class="review-text">%s</div>'
-                . '</div>',
-            esc_html($author),
-            $rating,
-            esc_html($date),
-            nl2br(esc_html($text))
-        ),
+        'message' => 'Спасибо! Ваш отзыв отправлен на модерацию и появится после проверки.',
+        'html'    => '',
     ]);
 }
