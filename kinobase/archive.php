@@ -9,6 +9,39 @@ get_header();
 
 $queried = get_queried_object();
 $is_cat  = ($queried instanceof WP_Term && $queried->taxonomy === 'category');
+
+// Collect subcategory filter terms
+$filter_terms  = [];
+$filter_parent = null;
+$show_all_link = false;
+
+if ($is_cat) {
+    $children = get_terms([
+        'taxonomy'   => 'category',
+        'parent'     => $queried->term_id,
+        'hide_empty' => true,
+    ]);
+
+    if (!is_wp_error($children) && !empty($children)) {
+        // Current category has children → show "All" + children
+        $filter_terms  = $children;
+        $filter_parent = $queried;
+        $show_all_link = true;
+    } elseif ($queried->parent) {
+        // No children but has a parent → show siblings
+        $parent   = get_term((int) $queried->parent, 'category');
+        $siblings = get_terms([
+            'taxonomy'   => 'category',
+            'parent'     => (int) $queried->parent,
+            'hide_empty' => true,
+        ]);
+        if (!is_wp_error($siblings) && !empty($siblings) && !is_wp_error($parent)) {
+            $filter_terms  = $siblings;
+            $filter_parent = $parent;
+            $show_all_link = false;
+        }
+    }
+}
 ?>
 <main class="site-content" id="main" role="main">
     <div class="container">
@@ -17,9 +50,9 @@ $is_cat  = ($queried instanceof WP_Term && $queried->taxonomy === 'category');
             <h1 class="catalog-title">
                 <?php the_archive_title(); ?>
                 <?php if ($is_cat) :
-                    $count = $queried->count; ?>
-                    <span class="catalog-count">— <strong><?php echo number_format($count); ?></strong>
-                    <?php echo esc_html(_n('фильм', 'фильмов', $count, 'kinobase')); ?></span>
+                    $count = (int) $queried->count; ?>
+                <span class="catalog-count">— <strong><?php echo number_format($count); ?></strong>
+                <?php echo esc_html(_n('фильм', 'фильмов', $count, 'kinobase')); ?></span>
                 <?php endif; ?>
             </h1>
             <?php
@@ -30,55 +63,29 @@ $is_cat  = ($queried instanceof WP_Term && $queried->taxonomy === 'category');
             ?>
         </div>
 
-        <?php
-        // --- Subcategory / sibling filter ---
-        if ($is_cat) {
-            // If current category has children — show them as filter
-            $children = get_terms([
-                'taxonomy'   => 'category',
-                'parent'     => $queried->term_id,
-                'hide_empty' => true,
-            ]);
+        <?php if (!empty($filter_terms)) : ?>
+        <nav class="archive-filter" aria-label="<?php esc_attr_e('Фильтр по подкатегориям', 'kinobase'); ?>">
+            <?php if ($show_all_link) : ?>
+            <a href="<?php echo esc_url(get_category_link($filter_parent->term_id)); ?>"
+               class="filter-pill active">
+                <?php esc_html_e('Все', 'kinobase'); ?>
+            </a>
+            <?php else : ?>
+            <a href="<?php echo esc_url(get_category_link($filter_parent->term_id)); ?>"
+               class="filter-pill">
+                ← <?php echo esc_html($filter_parent->name); ?>
+            </a>
+            <?php endif; ?>
 
-            // If no children but has a parent — show siblings (parent's children)
-            if (empty($children) && $queried->parent) {
-                $parent   = get_term($queried->parent, 'category');
-                $siblings = get_terms([
-                    'taxonomy'   => 'category',
-                    'parent'     => $queried->parent,
-                    'hide_empty' => true,
-                ]);
-                if (!empty($siblings)) : ?>
-                <nav class="archive-filter" aria-label="<?php esc_attr_e('Фильтр по подкатегориям', 'kinobase'); ?>">
-                    <a href="<?php echo esc_url(get_category_link($parent)); ?>" class="filter-pill">
-                        ← <?php echo esc_html($parent->name); ?>
-                    </a>
-                    <?php foreach ($siblings as $sib) : ?>
-                    <a href="<?php echo esc_url(get_category_link($sib->term_id)); ?>"
-                       class="filter-pill<?php echo $sib->term_id === $queried->term_id ? ' active' : ''; ?>">
-                        <?php echo esc_html($sib->name); ?>
-                        <span class="filter-pill-count"><?php echo (int) $sib->count; ?></span>
-                    </a>
-                    <?php endforeach; ?>
-                </nav>
-                <?php endif;
-            } elseif (!empty($children)) : ?>
-                <nav class="archive-filter" aria-label="<?php esc_attr_e('Фильтр по подкатегориям', 'kinobase'); ?>">
-                    <a href="<?php echo esc_url(get_category_link($queried->term_id)); ?>"
-                       class="filter-pill active">
-                        <?php esc_html_e('Все', 'kinobase'); ?>
-                    </a>
-                    <?php foreach ($children as $child) : ?>
-                    <a href="<?php echo esc_url(get_category_link($child->term_id)); ?>"
-                       class="filter-pill">
-                        <?php echo esc_html($child->name); ?>
-                        <span class="filter-pill-count"><?php echo (int) $child->count; ?></span>
-                    </a>
-                    <?php endforeach; ?>
-                </nav>
-            <?php endif;
-        }
-        ?>
+            <?php foreach ($filter_terms as $term) : ?>
+            <a href="<?php echo esc_url(get_category_link($term->term_id)); ?>"
+               class="filter-pill<?php echo (!$show_all_link && $term->term_id === $queried->term_id) ? ' active' : ''; ?>">
+                <?php echo esc_html($term->name); ?>
+                <span class="filter-pill-count"><?php echo (int) $term->count; ?></span>
+            </a>
+            <?php endforeach; ?>
+        </nav>
+        <?php endif; ?>
 
         <?php if (have_posts()) : ?>
             <div class="movie-grid">
