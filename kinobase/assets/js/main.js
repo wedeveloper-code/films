@@ -195,6 +195,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (activeCardGallery === gallery) return; // already running
         stopCardSlideshow();
         activeCardGallery = gallery;
+        showGalleryImage(gallery, (gallery._kbIdx + 1) % imgs.length); // immediate first switch
         cardSlideTimer = setInterval(function () {
             showGalleryImage(gallery, (gallery._kbIdx + 1) % imgs.length);
         }, 2500);
