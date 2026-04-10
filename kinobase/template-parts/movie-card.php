@@ -35,6 +35,8 @@ if (empty($gallery_ids) && has_post_thumbnail()) {
 // Category-based info: year, quality, promo tags (Акция/Скидки/Бонусы)
 $card_year        = '';
 $card_quality_cat = '';
+$card_year_term   = null;
+$card_quality_term = null;
 $card_promo_tags  = [];
 
 $_promo_names = ['акция', 'акции', 'скидки', 'скидка', 'бонусы', 'бонус'];
@@ -45,9 +47,11 @@ foreach (get_the_category() as $cat) {
     if (!$parent || is_wp_error($parent)) continue;
     $pname = mb_strtolower($parent->name);
     if (in_array($pname, ['год', 'year', 'годы'], true) && !$card_year) {
-        $card_year = $cat->name;
+        $card_year      = $cat->name;
+        $card_year_term = $cat;
     } elseif (in_array($pname, ['качество', 'quality'], true) && !$card_quality_cat) {
-        $card_quality_cat = $cat->name;
+        $card_quality_cat  = $cat->name;
+        $card_quality_term = $cat;
     } elseif (in_array($pname, $_promo_names, true)) {
         $card_promo_tags[] = $cat;
     }
@@ -77,14 +81,17 @@ $views_fmt = $views >= 1000
     ? round($views / 1000, 1) . 'K'
     : (string) $views;
 
-// Year+Quality one-liner with parent category labels
+// Year+Quality one-liner with parent category labels (as links)
 $card_info_parts = [];
-if ($card_year) {
-    $card_info_parts[] = __('Год', 'kinobase') . ': ' . $card_year;
+if ($card_year_term) {
+    $card_info_parts[] = __('Год', 'kinobase') . ': <a href="' . esc_url(get_category_link($card_year_term->term_id)) . '" class="card-meta-link">' . esc_html($card_year) . '</a>';
+} elseif ($card_year) {
+    $card_info_parts[] = __('Год', 'kinobase') . ': ' . esc_html($card_year);
 }
-$q_val = $card_quality_cat ?: $quality;
-if ($q_val) {
-    $card_info_parts[] = __('Качество', 'kinobase') . ': ' . $q_val;
+if ($card_quality_term) {
+    $card_info_parts[] = __('Качество', 'kinobase') . ': <a href="' . esc_url(get_category_link($card_quality_term->term_id)) . '" class="card-meta-link">' . esc_html($card_quality_cat) . '</a>';
+} elseif ($card_quality_cat ?: $quality) {
+    $card_info_parts[] = __('Качество', 'kinobase') . ': ' . esc_html($card_quality_cat ?: $quality);
 }
 
 ?>
@@ -123,7 +130,7 @@ if ($q_val) {
 
         <!-- Quality badge + Rating -->
         <div class="poster-badges" aria-hidden="true">
-            <span class="badge"><?php echo esc_html($quality); ?></span>
+            <span class="badge"><?php echo esc_html($card_quality_cat ?: $quality); ?></span>
             <?php if ($rating_val !== null) : ?>
             <span class="badge badge-rating">★ <?php echo number_format($rating_val, 1); ?></span>
             <?php endif; ?>
@@ -173,7 +180,7 @@ if ($q_val) {
 
         <!-- Year · Quality (one line from categories) -->
         <?php if (!empty($card_info_parts)) : ?>
-        <div class="card-year-quality"><?php echo esc_html(implode(' · ', $card_info_parts)); ?></div>
+        <div class="card-year-quality"><?php echo implode(' · ', $card_info_parts); ?></div>
         <?php endif; ?>
 
         <!-- Pricing -->

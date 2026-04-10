@@ -173,6 +173,44 @@ while (have_posts()) :
                     </div>
                     <?php endif; ?>
 
+                    <!-- Pricing (split: Аренда left / Покупка right) -->
+                    <div class="single-pricing">
+                        <h3 class="single-section-label"><?php esc_html_e('Доступ к фильму', 'kinobase'); ?></h3>
+
+                        <div class="single-price-split">
+                            <div class="single-price-col">
+                                <div class="single-price-col-header"><?php esc_html_e('Аренда', 'kinobase'); ?></div>
+                                <div class="single-price-row">
+                                    <span><?php esc_html_e('1 просмотр', 'kinobase'); ?></span>
+                                    <strong><?php echo esc_html(kb_price($rent1)); ?></strong>
+                                </div>
+                                <div class="single-price-row">
+                                    <span><?php esc_html_e('3 просмотра', 'kinobase'); ?></span>
+                                    <strong><?php echo esc_html(kb_price($rent3)); ?></strong>
+                                </div>
+                                <div class="single-price-row">
+                                    <span><?php esc_html_e('5 просмотров', 'kinobase'); ?></span>
+                                    <strong><?php echo esc_html(kb_price($rent5)); ?></strong>
+                                </div>
+                            </div>
+                            <div class="single-price-col">
+                                <div class="single-price-col-header"><?php esc_html_e('Покупка', 'kinobase'); ?></div>
+                                <div class="single-price-row">
+                                    <span><?php esc_html_e('Неделя', 'kinobase'); ?></span>
+                                    <strong><?php echo esc_html(kb_price($buy_week)); ?></strong>
+                                </div>
+                                <div class="single-price-row">
+                                    <span><?php esc_html_e('Месяц', 'kinobase'); ?></span>
+                                    <strong><?php echo esc_html(kb_price($buy_month)); ?></strong>
+                                </div>
+                                <div class="single-price-row">
+                                    <span><?php esc_html_e('Навсегда', 'kinobase'); ?></span>
+                                    <strong><?php echo esc_html(kb_price($buy_forever)); ?></strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Meta table -->
                     <?php
                     // Group assigned categories by their parent (skip top-level section cats)
@@ -275,7 +313,7 @@ while (have_posts()) :
                     <?php if (!empty($box_office) && is_array($box_office)) : ?>
                     <div class="single-box-office">
                         <h3 class="single-section-label"><?php esc_html_e('Кассовые сборы', 'kinobase'); ?></h3>
-                        <table class="box-office-table">
+                        <table class="single-meta-table">
                             <tbody>
                             <?php foreach ($box_office as $row) :
                                 $country = $row['country'] ?? '';
@@ -283,52 +321,14 @@ while (have_posts()) :
                                 if (!$country && !$amount) continue;
                             ?>
                             <tr>
-                                <td><?php echo esc_html($country); ?></td>
-                                <td><?php echo esc_html($amount); ?></td>
+                                <td class="smeta-label"><?php echo esc_html($country); ?></td>
+                                <td class="smeta-value"><?php echo esc_html($amount); ?></td>
                             </tr>
                             <?php endforeach; ?>
                             </tbody>
                         </table>
                     </div>
                     <?php endif; ?>
-
-                    <!-- Pricing (split: Аренда left / Покупка right) -->
-                    <div class="single-pricing">
-                        <h3 class="single-section-label"><?php esc_html_e('Доступ к фильму', 'kinobase'); ?></h3>
-
-                        <div class="single-price-split">
-                            <div class="single-price-col">
-                                <div class="single-price-col-header"><?php esc_html_e('Аренда', 'kinobase'); ?></div>
-                                <div class="single-price-row">
-                                    <span><?php esc_html_e('1 просмотр', 'kinobase'); ?></span>
-                                    <strong><?php echo esc_html(kb_price($rent1)); ?></strong>
-                                </div>
-                                <div class="single-price-row">
-                                    <span><?php esc_html_e('3 просмотра', 'kinobase'); ?></span>
-                                    <strong><?php echo esc_html(kb_price($rent3)); ?></strong>
-                                </div>
-                                <div class="single-price-row">
-                                    <span><?php esc_html_e('5 просмотров', 'kinobase'); ?></span>
-                                    <strong><?php echo esc_html(kb_price($rent5)); ?></strong>
-                                </div>
-                            </div>
-                            <div class="single-price-col">
-                                <div class="single-price-col-header"><?php esc_html_e('Покупка', 'kinobase'); ?></div>
-                                <div class="single-price-row">
-                                    <span><?php esc_html_e('Неделя', 'kinobase'); ?></span>
-                                    <strong><?php echo esc_html(kb_price($buy_week)); ?></strong>
-                                </div>
-                                <div class="single-price-row">
-                                    <span><?php esc_html_e('Месяц', 'kinobase'); ?></span>
-                                    <strong><?php echo esc_html(kb_price($buy_month)); ?></strong>
-                                </div>
-                                <div class="single-price-row">
-                                    <span><?php esc_html_e('Навсегда', 'kinobase'); ?></span>
-                                    <strong><?php echo esc_html(kb_price($buy_forever)); ?></strong>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
 
                     <!-- Description -->
                     <?php if (get_the_content()) : ?>
