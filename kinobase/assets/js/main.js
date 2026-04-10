@@ -154,32 +154,84 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     /* ============================================================
-       7. IMAGE GALLERY (hover zones)
+       7. IMAGE GALLERY — hover zones + auto-slideshow
+       One card slides at a time: the hovered card on desktop,
+       the card most visible on screen on mobile/touch.
        ============================================================ */
     function showGalleryImage(container, index) {
-        var imgs = container.querySelectorAll('.gallery-img');
+        var imgs  = container.querySelectorAll('.gallery-img');
         var fills = container.querySelectorAll('.indicator-fill');
-        imgs.forEach(function (img) { img.classList.remove('active'); });
-        fills.forEach(function (f) { f.style.width = '0'; });
-        if (imgs[index]) imgs[index].classList.add('active');
-        if (fills[index]) fills[index].style.width = '100%';
+        imgs.forEach(function (img, i)  { img.classList.toggle('active', i === index); });
+        fills.forEach(function (f, i)   { f.style.width = i === index ? '100%' : '0'; });
+        container._kbIdx = index; // track current index for slideshow
     }
 
-    function resetGallery(container) {
-        showGalleryImage(container, 0);
-    }
+    function resetGallery(container) { showGalleryImage(container, 0); }
 
+    // Hover zones — manual image selection while hovering
     document.querySelectorAll('.movie-gallery').forEach(function (gallery) {
-        var zones = gallery.querySelectorAll('.gallery-zone');
-        zones.forEach(function (zone, index) {
-            zone.addEventListener('mouseenter', function () {
-                showGalleryImage(gallery, index);
-            });
-        });
-        gallery.addEventListener('mouseleave', function () {
-            resetGallery(gallery);
+        gallery._kbIdx = 0;
+        gallery.querySelectorAll('.gallery-zone').forEach(function (zone, i) {
+            zone.addEventListener('mouseenter', function () { showGalleryImage(gallery, i); });
         });
     });
+
+    // Auto-slideshow helpers — only ONE card active at a time
+    var activeCardGallery = null;
+    var cardSlideTimer    = null;
+
+    function stopCardSlideshow() {
+        clearInterval(cardSlideTimer);
+        cardSlideTimer = null;
+        if (activeCardGallery) {
+            resetGallery(activeCardGallery);
+            activeCardGallery = null;
+        }
+    }
+
+    function startCardSlideshow(gallery) {
+        var imgs = gallery.querySelectorAll('.gallery-img');
+        if (imgs.length < 2) return;
+        if (activeCardGallery === gallery) return; // already running
+        stopCardSlideshow();
+        activeCardGallery = gallery;
+        cardSlideTimer = setInterval(function () {
+            showGalleryImage(gallery, (gallery._kbIdx + 1) % imgs.length);
+        }, 2500);
+    }
+
+    // Detect primary input type: touch vs pointer
+    var isTouchPrimary = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+
+    if (!isTouchPrimary) {
+        // Desktop: slideshow starts when card is hovered, stops on leave
+        document.querySelectorAll('.movie-card').forEach(function (card) {
+            var gallery = card.querySelector('.movie-gallery');
+            if (!gallery || gallery.querySelectorAll('.gallery-img').length < 2) return;
+            card.addEventListener('mouseenter', function () { startCardSlideshow(gallery); });
+            card.addEventListener('mouseleave', function () { stopCardSlideshow(); });
+        });
+    } else {
+        // Mobile/touch: slideshow for the card currently on screen (≥60% visible)
+        var cardSlideObserver = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                var gallery = entry.target.querySelector('.movie-gallery');
+                if (!gallery) return;
+                if (entry.isIntersecting) {
+                    startCardSlideshow(gallery);
+                } else if (activeCardGallery === gallery) {
+                    stopCardSlideshow();
+                }
+            });
+        }, { threshold: 0.6 });
+
+        document.querySelectorAll('.movie-card').forEach(function (card) {
+            var gallery = card.querySelector('.movie-gallery');
+            if (gallery && gallery.querySelectorAll('.gallery-img').length >= 2) {
+                cardSlideObserver.observe(card);
+            }
+        });
+    }
 
     /* ============================================================
        8. PRICE TABS
@@ -618,15 +670,10 @@ document.addEventListener('DOMContentLoaded', function () {
         gallery.addEventListener('touchend', function (e) {
             var dx = e.changedTouches[0].clientX - swipeX;
             if (Math.abs(dx) < 30) return;
-            var imgs  = gallery.querySelectorAll('.gallery-img');
-            var fills = gallery.querySelectorAll('.indicator-fill');
-            var cur   = 0;
-            imgs.forEach(function (img, i) { if (img.classList.contains('active')) cur = i; });
+            var imgs = gallery.querySelectorAll('.gallery-img');
+            var cur  = gallery._kbIdx || 0;
             var next = dx < 0 ? Math.min(cur + 1, imgs.length - 1) : Math.max(cur - 1, 0);
-            imgs.forEach(function (img) { img.classList.remove('active'); });
-            fills.forEach(function (f) { f.style.width = '0'; });
-            if (imgs[next]) imgs[next].classList.add('active');
-            if (fills[next]) fills[next].style.width = '100%';
+            showGalleryImage(gallery, next); // keeps _kbIdx in sync with slideshow
         }, { passive: true });
     });
 
