@@ -216,25 +216,40 @@ function kinobase_render_additional_box(WP_Post $post): void
 }
 
 /**
- * Movie info meta box
+ * Movie info meta box — renders fields from field-builder (dynamic).
  */
 function kinobase_render_info_box(WP_Post $post): void
 {
-    // movie_year and movie_genre are now set via Categories (Рубрики) — no need to enter twice.
-    $fields = [
-        'movie_duration'    => __('Длительность', 'kinobase'),
-        'movie_quality'     => __('Качество (HD, 4K…)', 'kinobase'),
-        'movie_translation' => __('Перевод', 'kinobase'),
-    ];
+    $fields = kinobase_get_movie_fields();
+
+    if (empty($fields)) {
+        echo '<p style="color:#666;">' . esc_html__('Нет полей. Добавьте их в Фильмы → Мета-боксы.', 'kinobase') . '</p>';
+        return;
+    }
 
     echo '<table style="width:100%;border-collapse:collapse;">';
-    foreach ($fields as $key => $label) {
-        $value = esc_attr((string) get_post_meta($post->ID, $key, true));
+    foreach ($fields as $f) {
+        $key   = esc_attr($f['key']);
+        $label = esc_html($f['label']);
+        $type  = $f['type'] ?? 'text';
+        $value = get_post_meta($post->ID, $f['key'], true);
+
         echo '<tr>';
-        echo '<td style="width:180px;padding:8px 12px 8px 0;vertical-align:middle;font-weight:600;">'
-            . esc_html($label) . '</td>';
-        echo '<td style="padding:4px 0;"><input type="text" name="' . esc_attr($key) . '" value="'
-            . $value . '" style="width:100%;" class="regular-text"></td>';
+        echo '<td style="width:180px;padding:8px 12px 8px 0;vertical-align:middle;font-weight:600;">' . $label . '</td>';
+        echo '<td style="padding:4px 0;">';
+
+        if ($type === 'textarea') {
+            echo '<textarea name="' . $key . '" rows="3" style="width:100%;">'
+                . esc_textarea((string) $value) . '</textarea>';
+        } elseif ($type === 'number') {
+            echo '<input type="number" name="' . $key . '" value="' . esc_attr((string) $value)
+                . '" style="width:120px;" class="regular-text">';
+        } else {
+            echo '<input type="text" name="' . $key . '" value="' . esc_attr((string) $value)
+                . '" style="width:100%;" class="regular-text">';
+        }
+
+        echo '</td>';
         echo '</tr>';
     }
     echo '</table>';
@@ -320,11 +335,23 @@ function kinobase_save_meta_boxes(int $post_id, WP_Post $post): void
         : [];
     update_post_meta($post_id, 'movie_gallery', $gallery);
 
-    // Text / number fields
-    $text_fields = ['movie_duration', 'movie_quality', 'movie_translation', 'movie_coupon'];
+    // Text / number fields (fixed)
+    $text_fields = ['movie_coupon'];
     foreach ($text_fields as $field) {
         if (isset($_POST[$field])) {
             update_post_meta($post_id, $field, sanitize_text_field($_POST[$field]));
+        }
+    }
+
+    // Dynamic fields from field-builder
+    foreach (kinobase_get_movie_fields() as $f) {
+        $key  = $f['key'];
+        $type = $f['type'] ?? 'text';
+        if (!isset($_POST[$key])) continue;
+        if ($type === 'textarea') {
+            update_post_meta($post_id, $key, sanitize_textarea_field($_POST[$key]));
+        } else {
+            update_post_meta($post_id, $key, sanitize_text_field($_POST[$key]));
         }
     }
 
