@@ -168,9 +168,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function resetGallery(container) { showGalleryImage(container, 0); }
 
-    // Hover zones — manual image selection while hovering
+    // Init galleries: set first fill to 100% so indicator state matches the active image
     document.querySelectorAll('.movie-gallery').forEach(function (gallery) {
         gallery._kbIdx = 0;
+        var fills = gallery.querySelectorAll('.indicator-fill');
+        if (fills[0]) fills[0].style.width = '100%';
+
+        // Hover zones — manual image selection while hovering
         gallery.querySelectorAll('.gallery-zone').forEach(function (zone, i) {
             zone.addEventListener('mouseenter', function () { showGalleryImage(gallery, i); });
         });
