@@ -56,7 +56,7 @@ if (!empty($_COOKIE['kb_favorites'])) {
         <?php else :
 
             $query = new WP_Query([
-                'post_type'              => 'post',
+                'post_type'              => ['post', 'movie'],
                 'post_status'            => 'publish',
                 'post__in'               => $fav_ids,
                 'orderby'                => 'post__in',

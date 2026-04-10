@@ -114,6 +114,7 @@ if ($is_cat) {
             <?php endforeach; ?>
         </nav>
         <?php endif; ?>
+        </div><!-- /.catalog-heading -->
 
         <?php
         global $wp_query;
