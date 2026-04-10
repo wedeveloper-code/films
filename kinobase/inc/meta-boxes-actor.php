@@ -178,13 +178,16 @@ function kinobase_render_actor_social_box(WP_Post $post): void
 function kinobase_render_actor_films_box(WP_Post $post): void
 {
     $movies = new WP_Query([
-        'post_type'      => ['post', 'movie'],
-        'posts_per_page' => -1,
-        'no_found_rows'  => true,
-        'meta_query'     => [[
+        'post_type'              => ['post', 'movie'],
+        'posts_per_page'         => 50,
+        'no_found_rows'          => true,
+        'update_post_meta_cache' => false,
+        'update_post_term_cache' => false,
+        'meta_query'             => [[
             'key'     => '_movie_cast',
-            'value'   => '"' . (int) $post->ID . '"',
-            'compare' => 'LIKE',
+            'value'   => (int) $post->ID,
+            'compare' => '=',
+            'type'    => 'NUMERIC',
         ]],
     ]);
 
@@ -213,16 +216,13 @@ function kinobase_render_cast_box(WP_Post $post): void
 {
     wp_nonce_field('kinobase_save_cast', 'kinobase_cast_nonce');
 
-    $cast_ids = get_post_meta($post->ID, '_movie_cast', true);
-    if (!is_array($cast_ids)) {
-        $cast_ids = [];
-    }
-    $cast_ids = array_filter(array_map('intval', $cast_ids));
+    // Multi-value meta: get_post_meta with false returns a flat array of all values.
+    $cast_ids = array_filter(array_map('intval', get_post_meta($post->ID, '_movie_cast', false)));
 
-    // All actors for the search list
+    // Limit datalist to 200 actors to keep the admin page responsive at scale.
     $all_actors = get_posts([
         'post_type'      => 'actor',
-        'posts_per_page' => -1,
+        'posts_per_page' => 200,
         'orderby'        => 'title',
         'order'          => 'ASC',
         'post_status'    => 'publish',
@@ -361,5 +361,10 @@ function kinobase_save_cast_meta(int $post_id, WP_Post $post): void
 
     $cast = isset($_POST['_movie_cast']) ? (array) $_POST['_movie_cast'] : [];
     $cast = array_values(array_unique(array_filter(array_map('absint', $cast))));
-    update_post_meta($post_id, '_movie_cast', $cast);
+
+    // Store as multiple separate meta rows so filmography queries can use '=' instead of LIKE.
+    delete_post_meta($post_id, '_movie_cast');
+    foreach ($cast as $actor_id) {
+        add_post_meta($post_id, '_movie_cast', $actor_id, false);
+    }
 }

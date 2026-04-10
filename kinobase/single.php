@@ -199,9 +199,7 @@ while (have_posts()) :
 
                     <!-- Actor cast -->
                     <?php
-                    $cast_ids = get_post_meta($post_id, '_movie_cast', true);
-                    if (!is_array($cast_ids)) $cast_ids = [];
-                    $cast_ids = array_filter(array_map('intval', $cast_ids));
+                    $cast_ids = array_filter(array_map('intval', get_post_meta($post_id, '_movie_cast', false)));
                     if (!empty($cast_ids)) :
                     ?>
                     <div class="single-cast">
@@ -415,6 +413,7 @@ while (have_posts()) :
                 [
                     'title' => __('Сейчас смотрят', 'kinobase'),
                     'args'  => [
+                        'post_type'              => ['post', 'movie'],
                         'posts_per_page'         => 5,
                         'post__not_in'           => [$post_id],
                         'meta_key'               => 'movie_views',
@@ -422,28 +421,33 @@ while (have_posts()) :
                         'order'                  => 'DESC',
                         'no_found_rows'          => true,
                         'update_post_term_cache' => false,
+                        'update_post_meta_cache' => false,
                     ],
                 ],
                 [
                     'title' => __('Рекомендуем', 'kinobase'),
                     'args'  => [
+                        'post_type'              => ['post', 'movie'],
                         'posts_per_page'         => 5,
                         'post__not_in'           => [$post_id],
                         'category__in'           => array_map(fn($c) => $c->term_id, $categories),
                         'orderby'                => 'rand',
                         'no_found_rows'          => true,
                         'update_post_term_cache' => false,
+                        'update_post_meta_cache' => false,
                     ],
                 ],
                 [
                     'title' => __('Новинки', 'kinobase'),
                     'args'  => [
+                        'post_type'              => ['post', 'movie'],
                         'posts_per_page'         => 5,
                         'post__not_in'           => [$post_id],
                         'orderby'                => 'date',
                         'order'                  => 'DESC',
                         'no_found_rows'          => true,
                         'update_post_term_cache' => false,
+                        'update_post_meta_cache' => false,
                     ],
                 ],
             ];

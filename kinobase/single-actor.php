@@ -47,17 +47,21 @@ while (have_posts()) :
         }
     }
 
-    // Filmography: movies where _movie_cast contains this actor's ID
+    // Filmography: movies where _movie_cast contains this actor's ID.
+    // Uses exact numeric match (multi-value meta rows) — no full-table scan.
     $filmography = new WP_Query([
-        'post_type'      => ['post', 'movie'],
-        'posts_per_page' => -1,
-        'no_found_rows'  => true,
-        'orderby'        => 'date',
-        'order'          => 'DESC',
-        'meta_query'     => [[
+        'post_type'              => ['post', 'movie'],
+        'posts_per_page'         => 20,
+        'no_found_rows'          => true,
+        'orderby'                => 'date',
+        'order'                  => 'DESC',
+        'update_post_term_cache' => false,
+        'update_post_meta_cache' => false,
+        'meta_query'             => [[
             'key'     => '_movie_cast',
-            'value'   => '"' . $actor_id . '"',
-            'compare' => 'LIKE',
+            'value'   => $actor_id,
+            'compare' => '=',
+            'type'    => 'NUMERIC',
         ]],
     ]);
 

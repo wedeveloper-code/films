@@ -150,13 +150,18 @@ function kinobase_movie_in_category_archives(WP_Query $q): void
  */
 function kinobase_get_filter_menu_data(string $location): ?array
 {
+    static $cache = [];
+    if (array_key_exists($location, $cache)) {
+        return $cache[$location];
+    }
+
     $locations = get_nav_menu_locations();
     if (empty($locations[$location])) {
-        return null;
+        return $cache[$location] = null;
     }
     $items = wp_get_nav_menu_items((int) $locations[$location]);
     if (empty($items)) {
-        return null;
+        return $cache[$location] = null;
     }
 
     $roots    = [];
@@ -169,7 +174,7 @@ function kinobase_get_filter_menu_data(string $location): ?array
             $children[$pid][] = $item;
         }
     }
-    return ['roots' => $roots, 'children' => $children];
+    return $cache[$location] = ['roots' => $roots, 'children' => $children];
 }
 
 /**
