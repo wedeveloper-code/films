@@ -220,9 +220,8 @@ function kinobase_render_additional_box(WP_Post $post): void
  */
 function kinobase_render_info_box(WP_Post $post): void
 {
+    // movie_year and movie_genre are now set via Categories (Рубрики) — no need to enter twice.
     $fields = [
-        'movie_year'        => __('Год выпуска', 'kinobase'),
-        'movie_genre'       => __('Жанр(ы)', 'kinobase'),
         'movie_duration'    => __('Длительность', 'kinobase'),
         'movie_quality'     => __('Качество (HD, 4K…)', 'kinobase'),
         'movie_translation' => __('Перевод', 'kinobase'),
@@ -322,7 +321,7 @@ function kinobase_save_meta_boxes(int $post_id, WP_Post $post): void
     update_post_meta($post_id, 'movie_gallery', $gallery);
 
     // Text / number fields
-    $text_fields = ['movie_year', 'movie_genre', 'movie_duration', 'movie_quality', 'movie_translation', 'movie_coupon'];
+    $text_fields = ['movie_duration', 'movie_quality', 'movie_translation', 'movie_coupon'];
     foreach ($text_fields as $field) {
         if (isset($_POST[$field])) {
             update_post_meta($post_id, $field, sanitize_text_field($_POST[$field]));

@@ -32,9 +32,20 @@ if (empty($gallery_ids) && has_post_thumbnail()) {
     $gallery_ids = [get_post_thumbnail_id()];
 }
 
+// Category groups (replaces manual year/genre meta)
+$card_cat_groups = [];
+foreach (get_the_category() as $cat) {
+    if ($cat->parent === 0) continue;
+    $parent = get_term((int) $cat->parent, 'category');
+    if (!$parent || is_wp_error($parent)) continue;
+    if (!isset($card_cat_groups[$parent->term_id])) {
+        $card_cat_groups[$parent->term_id] = ['parent' => $parent, 'terms' => []];
+    }
+    $card_cat_groups[$parent->term_id]['terms'][] = $cat;
+}
+$card_cat_groups = array_slice($card_cat_groups, 0, 2, true); // max 2 rows
+
 // Movie meta
-$year        = get_post_meta($post_id, 'movie_year', true);
-$genre       = get_post_meta($post_id, 'movie_genre', true);
 $duration    = get_post_meta($post_id, 'movie_duration', true);
 $quality     = get_post_meta($post_id, 'movie_quality', true) ?: 'HD';
 $translation = get_post_meta($post_id, 'movie_translation', true);
@@ -144,20 +155,16 @@ $views_fmt = $views >= 1000
             <a href="<?php echo esc_url($permalink); ?>"><?php echo esc_html($title); ?></a>
         </h3>
 
+        <?php if (!empty($card_cat_groups)) : ?>
         <table class="movie-meta">
-            <?php if ($year) : ?>
+            <?php foreach ($card_cat_groups as $group) : ?>
             <tr>
-                <td><?php esc_html_e('Год:', 'kinobase'); ?></td>
-                <td><?php echo esc_html($year); ?></td>
+                <td><?php echo esc_html($group['parent']->name); ?>:</td>
+                <td class="truncate"><?php echo esc_html(implode(', ', array_map(fn($t) => $t->name, $group['terms']))); ?></td>
             </tr>
-            <?php endif; ?>
-            <?php if ($genre) : ?>
-            <tr>
-                <td><?php esc_html_e('Жанр:', 'kinobase'); ?></td>
-                <td class="truncate"><?php echo esc_html($genre); ?></td>
-            </tr>
-            <?php endif; ?>
+            <?php endforeach; ?>
         </table>
+        <?php endif; ?>
 
         <!-- Pricing -->
         <div class="pricing">

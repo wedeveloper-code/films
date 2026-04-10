@@ -2123,6 +2123,18 @@ a.mobile-page-num:hover { background: var(--border); color: var(--text); }
 }
 .actor-attr-link:hover { text-decoration: underline; }
 
+/* Category links in movie meta table */
+.smeta-cat-link {
+  color: var(--text);
+  text-decoration: none;
+  border-bottom: 1px solid var(--border);
+  transition: color 0.15s, border-color 0.15s;
+}
+.smeta-cat-link:hover {
+  color: var(--brand);
+  border-bottom-color: var(--brand);
+}
+
 .actor-social { margin-top: 1.25rem; }
 .actor-social-links {
   display: flex;

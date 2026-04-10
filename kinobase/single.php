@@ -175,24 +175,47 @@ while (have_posts()) :
                     <?php endif; ?>
 
                     <!-- Meta table -->
+                    <?php
+                    // Group assigned categories by their parent (skip top-level section cats)
+                    $cat_groups = [];
+                    foreach ($categories as $cat) {
+                        if ($cat->parent === 0) continue;
+                        $parent = get_term((int) $cat->parent, 'category');
+                        if (!$parent || is_wp_error($parent)) continue;
+                        if (!isset($cat_groups[$parent->term_id])) {
+                            $cat_groups[$parent->term_id] = ['parent' => $parent, 'terms' => []];
+                        }
+                        $cat_groups[$parent->term_id]['terms'][] = $cat;
+                    }
+                    ?>
                     <table class="single-meta-table">
                         <tbody>
+                        <?php foreach ($cat_groups as $group) : ?>
+                        <tr>
+                            <td class="smeta-label"><?php echo esc_html($group['parent']->name); ?></td>
+                            <td class="smeta-value">
+                                <?php foreach ($group['terms'] as $i => $t) : ?>
+                                <a href="<?php echo esc_url(get_category_link($t->term_id)); ?>"
+                                   class="smeta-cat-link"><?php echo esc_html($t->name); ?></a><?php echo $i < count($group['terms']) - 1 ? ', ' : ''; ?>
+                                <?php endforeach; ?>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
                         <?php
-                        $rows = [
-                            __('Год',        'kinobase') => $year,
-                            __('Жанр',       'kinobase') => $genre,
-                            __('Длительность','kinobase')=> $duration,
-                            __('Перевод',    'kinobase') => $translation,
-                            __('Режиссёр',   'kinobase') => $directors,
-                            __('Актёры',     'kinobase') => $actors,
+                        // Plain-text fields not expressed as categories
+                        $plain_rows = [
+                            __('Длительность', 'kinobase') => $duration,
+                            __('Перевод',      'kinobase') => $translation,
+                            __('Режиссёр',     'kinobase') => $directors,
+                            __('Актёры',       'kinobase') => $actors,
                         ];
-                        foreach ($rows as $label => $value) :
+                        foreach ($plain_rows as $label => $value) :
                             if ($value === '') continue;
-                            ?>
-                            <tr>
-                                <td class="smeta-label"><?php echo esc_html($label); ?></td>
-                                <td class="smeta-value"><?php echo esc_html($value); ?></td>
-                            </tr>
+                        ?>
+                        <tr>
+                            <td class="smeta-label"><?php echo esc_html($label); ?></td>
+                            <td class="smeta-value"><?php echo esc_html($value); ?></td>
+                        </tr>
                         <?php endforeach; ?>
                         </tbody>
                     </table>
