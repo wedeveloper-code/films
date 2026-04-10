@@ -2596,3 +2596,16 @@ h3 { font-size: 1.25rem; }
   padding-left: 0.75rem;
 }
 .smeta-value { padding-left: 0.875rem; }
+
+/* Archive bottom description */
+.archive-bottom-desc {
+  margin-top: 3rem;
+  padding: 2rem 0 1rem;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+  line-height: 1.75;
+}
+.archive-bottom-desc h2,
+.archive-bottom-desc h3 { color: var(--text); margin-top: 1.25rem; }
+.archive-bottom-desc a   { color: var(--brand); }

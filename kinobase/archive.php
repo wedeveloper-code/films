@@ -186,6 +186,20 @@ if ($is_cat) {
             </div>
         <?php endif; ?>
 
+    <?php
+    // Bottom description (set per-category in Рубрики → [название] → «Текст внизу страницы»)
+    if ($is_cat) {
+        $bottom_desc = (string) get_term_meta($queried->term_id, 'kb_bottom_description', true);
+        if ($bottom_desc) : ?>
+    <div class="archive-bottom-desc">
+        <div class="container">
+            <?php echo wp_kses_post($bottom_desc); ?>
+        </div>
+    </div>
+        <?php endif;
+    }
+    ?>
+
     </div>
 </main>
 <?php get_footer(); ?>
