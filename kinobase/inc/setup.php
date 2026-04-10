@@ -256,8 +256,9 @@ add_action('transition_comment_status', 'kinobase_recalculate_movie_rating', 10,
 
 function kinobase_recalculate_movie_rating(string $new_status, string $old_status, WP_Comment $comment): void
 {
-    $post_id = (int) $comment->comment_post_ID;
-    if (!$post_id || get_post_type($post_id) !== 'post') return;
+    $post_id   = (int) $comment->comment_post_ID;
+    $post_type = get_post_type($post_id);
+    if (!$post_id || !in_array($post_type, ['post', 'movie'], true)) return;
 
     $approved_comments = get_comments([
         'post_id' => $post_id,

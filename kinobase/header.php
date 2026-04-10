@@ -21,7 +21,7 @@
 
 <!-- Search Overlay -->
 <div id="search-overlay" class="search-overlay" role="dialog" aria-label="<?php esc_attr_e('Поиск', 'kinobase'); ?>">
-    <button id="search-close" class="sr-only" style="position:absolute;top:1rem;right:1rem;font-size:2rem;color:#fff;background:none;border:none;cursor:pointer;" aria-label="<?php esc_attr_e('Закрыть поиск', 'kinobase'); ?>">✕</button>
+    <button id="search-close" class="search-close-btn" aria-label="<?php esc_attr_e('Закрыть поиск', 'kinobase'); ?>">✕</button>
     <form class="search-form" role="search" method="get" action="<?php echo esc_url(home_url('/')); ?>">
         <input
             class="search-input"

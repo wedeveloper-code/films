@@ -202,6 +202,21 @@ ul, ol { list-style: none; }
   transition: background 0.2s;
 }
 .search-btn:hover { background: var(--brand-hover); }
+.search-close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1.25rem;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 2rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.15s;
+  padding: 0.25rem 0.5rem;
+}
+.search-close-btn:hover { opacity: 1; }
 
 /* Settings dropdown */
 .settings-menu { position: relative; }
