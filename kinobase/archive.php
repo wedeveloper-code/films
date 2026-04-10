@@ -58,7 +58,15 @@ if ($is_cat) {
                     <h1 class="catalog-title">
                         <?php the_archive_title(); ?>
                         <?php if ($is_cat) :
-                            $count = (int) $queried->count; ?>
+                            // Count both 'post' and 'movie' types in this category
+                            $count = (int) (new WP_Query([
+                                'post_type'      => ['post', 'movie'],
+                                'cat'            => $queried->term_id,
+                                'posts_per_page' => 1,
+                                'no_found_rows'  => false,
+                                'fields'         => 'ids',
+                            ]))->found_posts;
+                        ?>
                         <span class="catalog-count">— <strong><?php echo number_format($count); ?></strong>
                         <?php echo esc_html(_n('фильм', 'фильмов', $count, 'kinobase')); ?></span>
                         <?php endif; ?>

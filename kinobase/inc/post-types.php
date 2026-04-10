@@ -127,8 +127,9 @@ function kinobase_movie_in_category_archives(WP_Query $q): void
     if (is_admin() || !$q->is_main_query()) {
         return;
     }
-    if ($q->is_category() || $q->is_tag() || $q->is_home()) {
-        $types = (array) $q->get('post_type');
+    if ($q->is_category() || $q->is_tag() || $q->is_home() || $q->is_front_page()) {
+        // array_filter removes '' that WP returns when post_type is not explicitly set
+        $types = array_filter((array) $q->get('post_type'));
         if (empty($types) || $types === ['post']) {
             $q->set('post_type', ['post', 'movie']);
         }

@@ -96,7 +96,7 @@ if ($year_parent) {
 
                 // Build query args — add year tax_query when filtering
                 $query_args = [
-                    'post_type'               => 'post',
+                    'post_type'               => ['post', 'movie'],
                     'post_status'             => 'publish',
                     'posts_per_page'          => 10,
                     'no_found_rows'           => true,
