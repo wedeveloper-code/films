@@ -2443,62 +2443,51 @@ a.mobile-page-num:hover { background: var(--border); color: var(--text); }
    UPDATES BLOCK
    ============================================================ */
 
-/* 1b. Center promo tags below coupon */
+/* 1b. Promo tags — centered, bigger, square border */
 .card-promo-tags { justify-content: center; }
+.card-promo-tag {
+  border-radius: 0.25rem !important;
+  font-size: 0.8rem !important;
+  padding: 0.25rem 0.6rem !important;
+}
+
+/* Coupon code shown inside hero wrapper (single page) */
+.single-coupon-hero .coupon-code {
+  padding: 1rem 1.5rem;
+  font-size: 1.25rem;
+  border-radius: 0.75rem;
+  width: 100%;
+  letter-spacing: 0.12em;
+}
+
+/* 1a. Year/quality links on card */
+.card-meta-link {
+  color: var(--brand);
+  text-decoration: none;
+  border-bottom: 1px dotted currentColor;
+  transition: opacity 0.15s;
+}
+.card-meta-link:hover { opacity: 0.8; }
 
 /* 1c. Bigger movie title on desktop */
 @media (min-width: 768px) {
   .movie-title { font-size: 1.0625rem; }
 }
 
-/* 1d. Red glow on card hover */
-.movie-card:hover {
-  box-shadow: 0 0 0 2px var(--brand),
-              0 0 22px rgba(255,77,77,0.38),
-              0 10px 25px rgba(0,0,0,0.15);
-  transform: translateY(-3px);
-}
-
-/* 1e. Custom cursor — only on pointer (mouse) devices */
+/* 1d. Red glow on card hover — desktop only */
 @media (pointer: fine) {
-  body,
-  body a,
-  body button,
-  body input,
-  body textarea,
-  body select,
-  body [role="button"] { cursor: none !important; }
-
-  .kb-cursor {
-    position: fixed;
-    pointer-events: none;
-    z-index: 999999;
-    top: 0; left: 0;
-    width: 0; height: 0;
+  .movie-card:hover {
+    box-shadow: 0 0 0 2px var(--brand),
+                0 0 22px rgba(255,77,77,0.38),
+                0 10px 25px rgba(0,0,0,0.15);
+    transform: translateY(-3px);
   }
-  .kb-cursor-inner {
-    position: absolute;
-    transform: translate(-50%, -50%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .kb-cursor-dot {
-    position: absolute;
-    width: 7px; height: 7px;
-    background: var(--brand);
-    border-radius: 50%;
-    z-index: 2;
-  }
-  .kb-cursor-heart {
-    position: absolute;
-    width: 28px; height: 28px;
-    color: var(--brand);
-    animation: kb-heartbeat 1.4s ease-in-out infinite;
-  }
-  @keyframes kb-heartbeat {
-    0%, 100% { transform: scale(0.65); opacity: 0.35; }
-    50%       { transform: scale(1.35); opacity: 0.85; }
+}
+/* Restore normal shadow on touch devices */
+@media (pointer: coarse) {
+  .movie-card:hover {
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-3px);
   }
 }
 
