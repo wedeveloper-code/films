@@ -108,9 +108,22 @@ add_action('category_edit_form_fields', 'kb_cat_seo_fields');
 
 function kb_cat_seo_fields(WP_Term $term): void
 {
+    $h1        = (string) get_term_meta($term->term_id, '_kb_cat_h1',        true);
     $seo_title = (string) get_term_meta($term->term_id, '_kb_cat_seo_title', true);
     $seo_desc  = (string) get_term_meta($term->term_id, '_kb_cat_seo_desc',  true);
     ?>
+    <tr class="form-field">
+        <th scope="row">
+            <label for="_kb_cat_h1"><?php esc_html_e('H1 (заголовок страницы)', 'kinobase'); ?></label>
+        </th>
+        <td>
+            <input type="text" id="_kb_cat_h1" name="_kb_cat_h1"
+                   value="<?php echo esc_attr($h1); ?>" style="width:100%">
+            <p class="description">
+                <?php esc_html_e('Оставьте пустым — будет использован глобальный шаблон из Параметры → SEO рубрик.', 'kinobase'); ?>
+            </p>
+        </td>
+    </tr>
     <tr class="form-field">
         <th scope="row">
             <label for="_kb_cat_seo_title"><?php esc_html_e('SEO Title', 'kinobase'); ?></label>
@@ -170,6 +183,14 @@ function kb_cat_save_meta(int $term_id): void
         );
     }
 
+    if (isset($_POST['_kb_cat_h1'])) {
+        update_term_meta(
+            $term_id,
+            '_kb_cat_h1',
+            sanitize_text_field(wp_unslash($_POST['_kb_cat_h1']))
+        );
+    }
+
     if (isset($_POST['_kb_cat_seo_title'])) {
         update_term_meta(
             $term_id,
@@ -208,6 +229,10 @@ add_action('admin_init', 'kb_cat_seo_register_settings');
 
 function kb_cat_seo_register_settings(): void
 {
+    register_setting('kb_cat_seo_group', 'kb_cat_h1_tpl', [
+        'sanitize_callback' => 'sanitize_text_field',
+        'default'           => '',
+    ]);
     register_setting('kb_cat_seo_group', 'kb_cat_seo_title_tpl', [
         'sanitize_callback' => 'sanitize_text_field',
         'default'           => '%название_рубрики% — смотреть онлайн | %сайт%',
@@ -224,6 +249,7 @@ function kb_cat_seo_settings_page(): void
         return;
     }
 
+    $h1_val        = (string) get_option('kb_cat_h1_tpl',         '');
     $title_default = '%название_рубрики% — смотреть онлайн | %сайт%';
     $title_val     = (string) get_option('kb_cat_seo_title_tpl', $title_default);
     $desc_val      = (string) get_option('kb_cat_seo_desc_tpl',  '');
@@ -244,6 +270,21 @@ function kb_cat_seo_settings_page(): void
             <?php settings_fields('kb_cat_seo_group'); ?>
 
             <table class="form-table" role="presentation">
+                <tr>
+                    <th scope="row">
+                        <label for="kb_cat_h1_tpl"><?php esc_html_e('Шаблон H1', 'kinobase'); ?></label>
+                    </th>
+                    <td>
+                        <input type="text" id="kb_cat_h1_tpl" name="kb_cat_h1_tpl"
+                               value="<?php echo esc_attr($h1_val); ?>" class="large-text">
+                        <p class="description">
+                            <?php printf(
+                                esc_html__('Пример: %s', 'kinobase'),
+                                '<code>' . esc_html('Смотреть %название_рубрики% онлайн') . '</code>'
+                            ); ?>
+                        </p>
+                    </td>
+                </tr>
                 <tr>
                     <th scope="row">
                         <label for="kb_cat_seo_title_tpl"><?php esc_html_e('Шаблон &lt;title&gt;', 'kinobase'); ?></label>
@@ -283,6 +324,22 @@ function kb_cat_seo_settings_page(): void
         </form>
     </div>
     <?php
+}
+
+/* ============================================================
+   H1 helper — returns the H1 text for a category page
+   ============================================================ */
+
+function kb_cat_h1(WP_Term $term): string
+{
+    $custom = (string) get_term_meta($term->term_id, '_kb_cat_h1', true);
+    $tpl    = $custom ?: (string) get_option('kb_cat_h1_tpl', '');
+
+    if (!$tpl) {
+        return $term->name; // fallback: plain category name
+    }
+
+    return kb_replace_cat_vars($tpl, $term);
 }
 
 /* ============================================================

@@ -56,7 +56,13 @@ if ($is_cat) {
             <div class="catalog-heading-row">
                 <div class="catalog-heading-left">
                     <h1 class="catalog-title">
-                        <?php the_archive_title(); ?>
+                        <?php
+                        if ($is_cat) {
+                            echo esc_html(kb_cat_h1($queried));
+                        } else {
+                            the_archive_title();
+                        }
+                        ?>
                         <?php if ($is_cat) :
                             // Count both 'post' and 'movie' types in this category
                             $count = (int) (new WP_Query([
