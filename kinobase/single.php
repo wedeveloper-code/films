@@ -188,30 +188,36 @@ while (have_posts()) :
                         $cat_groups[$parent->term_id]['terms'][] = $cat;
                     }
                     ?>
+                    <?php if (!empty($cat_groups)) : ?>
+                    <div class="single-cat-blocks">
+                        <?php foreach ($cat_groups as $group) : ?>
+                        <div class="single-cat-block">
+                            <span class="scb-label"><?php echo esc_html($group['parent']->name); ?></span>
+                            <div class="scb-values">
+                                <?php foreach ($group['terms'] as $t) : ?>
+                                <a href="<?php echo esc_url(get_category_link($t->term_id)); ?>"
+                                   class="smeta-cat-link"><?php echo esc_html($t->name); ?></a>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php
+                    // Plain-text fields not expressed as categories
+                    $plain_rows = [
+                        __('Длительность', 'kinobase') => $duration,
+                        __('Перевод',      'kinobase') => $translation,
+                        __('Режиссёр',     'kinobase') => $directors,
+                        __('Актёры',       'kinobase') => $actors,
+                    ];
+                    $plain_rows = array_filter($plain_rows, fn($v) => $v !== '');
+                    if (!empty($plain_rows)) :
+                    ?>
                     <table class="single-meta-table">
                         <tbody>
-                        <?php foreach ($cat_groups as $group) : ?>
-                        <tr>
-                            <td class="smeta-label"><?php echo esc_html($group['parent']->name); ?></td>
-                            <td class="smeta-value">
-                                <?php foreach ($group['terms'] as $i => $t) : ?>
-                                <a href="<?php echo esc_url(get_category_link($t->term_id)); ?>"
-                                   class="smeta-cat-link"><?php echo esc_html($t->name); ?></a><?php echo $i < count($group['terms']) - 1 ? ', ' : ''; ?>
-                                <?php endforeach; ?>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                        <?php
-                        // Plain-text fields not expressed as categories
-                        $plain_rows = [
-                            __('Длительность', 'kinobase') => $duration,
-                            __('Перевод',      'kinobase') => $translation,
-                            __('Режиссёр',     'kinobase') => $directors,
-                            __('Актёры',       'kinobase') => $actors,
-                        ];
-                        foreach ($plain_rows as $label => $value) :
-                            if ($value === '') continue;
-                        ?>
+                        <?php foreach ($plain_rows as $label => $value) : ?>
                         <tr>
                             <td class="smeta-label"><?php echo esc_html($label); ?></td>
                             <td class="smeta-value"><?php echo esc_html($value); ?></td>
@@ -219,6 +225,7 @@ while (have_posts()) :
                         <?php endforeach; ?>
                         </tbody>
                     </table>
+                    <?php endif; ?>
 
                     <!-- Actor cast -->
                     <?php

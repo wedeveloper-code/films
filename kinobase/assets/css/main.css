@@ -2123,7 +2123,38 @@ a.mobile-page-num:hover { background: var(--border); color: var(--text); }
 }
 .actor-attr-link:hover { text-decoration: underline; }
 
-/* Category links in movie meta table */
+/* Category blocks on single movie page */
+.single-cat-blocks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+.single-cat-block {
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  min-width: 0;
+}
+.scb-label {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 0.3rem;
+}
+.scb-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Category links in movie meta table / blocks */
 .smeta-cat-link {
   color: var(--text);
   text-decoration: none;
