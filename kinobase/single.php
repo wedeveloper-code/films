@@ -230,14 +230,19 @@ while (have_posts()) :
                     <?php endif; ?>
 
                     <?php
-                    // Plain-text fields not expressed as categories
-                    $plain_rows = [
-                        __('Длительность', 'kinobase') => $duration,
-                        __('Перевод',      'kinobase') => $translation,
-                        __('Режиссёр',     'kinobase') => $directors,
-                        __('Актёры',       'kinobase') => $actors,
-                    ];
-                    $plain_rows = array_filter($plain_rows, fn($v) => $v !== '');
+                    // Dynamic fields from Мета-боксы (field-builder)
+                    $plain_rows = [];
+                    foreach (kinobase_get_movie_fields() as $f) {
+                        if ($f['key'] === 'movie_quality') continue; // shown as badge on poster
+                        $val = (string) get_post_meta($post_id, $f['key'], true);
+                        if ($val !== '') {
+                            $plain_rows[$f['label']] = $val;
+                        }
+                    }
+                    // Fixed: directors and actors
+                    if ($directors !== '') $plain_rows[__('Режиссёр', 'kinobase')] = $directors;
+                    if ($actors !== '')    $plain_rows[__('Актёры',   'kinobase')] = $actors;
+
                     if (!empty($plain_rows)) :
                     ?>
                     <table class="single-meta-table">
