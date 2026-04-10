@@ -2154,6 +2154,31 @@ a.mobile-page-num:hover { background: var(--border); color: var(--text); }
   font-weight: 500;
 }
 
+/* Collections section (Подборки) — below description */
+.single-collections { margin-top: 1.25rem; }
+.collections-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+.collection-tag {
+  display: inline-block;
+  padding: 0.3rem 0.8rem;
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  color: var(--text);
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.collection-tag:hover {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
 /* Category links in movie meta table / blocks */
 .smeta-cat-link {
   color: var(--text);

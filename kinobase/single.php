@@ -187,10 +187,21 @@ while (have_posts()) :
                         }
                         $cat_groups[$parent->term_id]['terms'][] = $cat;
                     }
+
+                    // Separate "Подборки" — it goes below the description
+                    $collections_group = null;
+                    $main_cat_groups   = [];
+                    foreach ($cat_groups as $tid => $group) {
+                        if (mb_strtolower($group['parent']->name) === 'подборки') {
+                            $collections_group = $group;
+                        } else {
+                            $main_cat_groups[$tid] = $group;
+                        }
+                    }
                     ?>
-                    <?php if (!empty($cat_groups)) : ?>
+                    <?php if (!empty($main_cat_groups)) : ?>
                     <div class="single-cat-blocks">
-                        <?php foreach ($cat_groups as $group) : ?>
+                        <?php foreach ($main_cat_groups as $group) : ?>
                         <div class="single-cat-block">
                             <span class="scb-label"><?php echo esc_html($group['parent']->name); ?></span>
                             <div class="scb-values">
@@ -332,6 +343,19 @@ while (have_posts()) :
                         <h3 class="single-section-label"><?php esc_html_e('Описание', 'kinobase'); ?></h3>
                         <div class="single-description-text">
                             <?php the_content(); ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+
+                    <!-- Collections (Подборки) — shown below description -->
+                    <?php if ($collections_group) : ?>
+                    <div class="single-collections">
+                        <h3 class="single-section-label"><?php echo esc_html($collections_group['parent']->name); ?></h3>
+                        <div class="collections-tags">
+                            <?php foreach ($collections_group['terms'] as $t) : ?>
+                            <a href="<?php echo esc_url(get_category_link($t->term_id)); ?>"
+                               class="collection-tag"><?php echo esc_html($t->name); ?></a>
+                            <?php endforeach; ?>
                         </div>
                     </div>
                     <?php endif; ?>
