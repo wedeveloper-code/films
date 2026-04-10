@@ -77,8 +77,15 @@ $views_fmt = $views >= 1000
     ? round($views / 1000, 1) . 'K'
     : (string) $views;
 
-// Year+Quality one-liner (prefer category value, fallback to meta for quality)
-$card_info_parts = array_filter([$card_year, $card_quality_cat ?: $quality]);
+// Year+Quality one-liner with parent category labels
+$card_info_parts = [];
+if ($card_year) {
+    $card_info_parts[] = __('Год', 'kinobase') . ': ' . $card_year;
+}
+$q_val = $card_quality_cat ?: $quality;
+if ($q_val) {
+    $card_info_parts[] = __('Качество', 'kinobase') . ': ' . $q_val;
+}
 
 ?>
 <article class="movie-card" data-post-id="<?php echo esc_attr((string) $post_id); ?>">

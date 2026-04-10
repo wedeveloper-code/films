@@ -79,14 +79,11 @@ if ($is_cat) {
                     ?>
                 </div>
 
-                <?php if ($has_filter_menu) :
-                    kinobase_render_mobile_filter_panel('kinobase_filters', $active_url, $reset_url);
-                endif; ?>
             </div><!-- .catalog-heading-row -->
 
             <?php if ($has_filter_menu) : ?>
-            <!-- Desktop filter bar — populated from Меню фильтров (wp-admin/nav-menus.php) -->
-            <div class="filter-bar filter-desktop-only">
+            <!-- Filter bar — Год / Жанр / Качество -->
+            <div class="filter-bar">
                 <?php kinobase_render_desktop_filter_bar($active_url, $reset_url); ?>
             </div><!-- .filter-bar -->
             <?php endif; ?>

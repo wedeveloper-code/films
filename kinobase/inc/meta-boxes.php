@@ -61,6 +61,15 @@ function kinobase_register_meta_boxes(): void
         'side',
         'default'
     );
+
+    add_meta_box(
+        'kinobase_seo',
+        __('Метатеги (SEO)', 'kinobase'),
+        'kinobase_render_seo_box',
+        $post_types,
+        'normal',
+        'default'
+    );
 }
 
 /**
@@ -390,6 +399,61 @@ function kinobase_save_meta_boxes(int $post_id, WP_Post $post): void
             update_post_meta($post_id, $field, absint($_POST[$field]));
         }
     }
+
+    // SEO fields
+    if (isset($_POST['kb_seo_title'])) {
+        update_post_meta($post_id, '_kb_seo_title', sanitize_text_field($_POST['kb_seo_title']));
+    }
+    if (isset($_POST['kb_seo_description'])) {
+        update_post_meta($post_id, '_kb_seo_description', sanitize_textarea_field($_POST['kb_seo_description']));
+    }
+}
+
+/**
+ * SEO meta box — custom title and description with variable support.
+ */
+function kinobase_render_seo_box(WP_Post $post): void
+{
+    $seo_title = esc_attr((string) get_post_meta($post->ID, '_kb_seo_title', true));
+    $seo_desc  = esc_textarea((string) get_post_meta($post->ID, '_kb_seo_description', true));
+    ?>
+    <table style="width:100%;border-collapse:collapse;">
+        <tr>
+            <td style="width:120px;padding:8px 12px 8px 0;font-weight:600;vertical-align:middle;">Title</td>
+            <td style="padding:4px 0;">
+                <input type="text" name="kb_seo_title" value="<?php echo $seo_title; ?>"
+                       style="width:100%;" class="regular-text"
+                       placeholder="<?php esc_attr_e('SEO заголовок страницы…', 'kinobase'); ?>">
+                <p class="description" style="margin-top:4px;">
+                    <?php esc_html_e('50–60 символов. Оставьте пустым — будет «Название · Сайт».', 'kinobase'); ?>
+                </p>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding:8px 12px 8px 0;font-weight:600;vertical-align:top;">Description</td>
+            <td style="padding:4px 0;">
+                <textarea name="kb_seo_description" rows="3"
+                          style="width:100%;"
+                          placeholder="<?php esc_attr_e('SEO описание для поисковиков…', 'kinobase'); ?>"><?php echo $seo_desc; ?></textarea>
+                <p class="description" style="margin-top:4px;">
+                    <?php esc_html_e('120–160 символов.', 'kinobase'); ?>
+                </p>
+            </td>
+        </tr>
+    </table>
+    <div style="margin-top:12px;padding:10px 14px;background:rgba(255,77,77,0.07);border:1px solid rgba(255,77,77,0.25);border-radius:6px;font-size:0.875rem;line-height:1.8;">
+        <strong><?php esc_html_e('Доступные переменные:', 'kinobase'); ?></strong><br>
+        <code>%название%</code> — <?php esc_html_e('название фильма', 'kinobase'); ?> &nbsp;·&nbsp;
+        <code>%год%</code> — <?php esc_html_e('год из рубрик', 'kinobase'); ?> &nbsp;·&nbsp;
+        <code>%жанр%</code> — <?php esc_html_e('жанр из рубрик', 'kinobase'); ?> &nbsp;·&nbsp;
+        <code>%качество%</code> — <?php esc_html_e('качество из рубрик/мета', 'kinobase'); ?> &nbsp;·&nbsp;
+        <code>%длительность%</code> — <?php esc_html_e('длительность', 'kinobase'); ?> &nbsp;·&nbsp;
+        <code>%сайт%</code> — <?php esc_html_e('название сайта', 'kinobase'); ?>
+    </div>
+    <p style="margin-top:10px;font-style:italic;color:#666;font-size:0.8125rem;">
+        <?php esc_html_e('Пример: %название% — %год% — смотреть онлайн на %сайт%', 'kinobase'); ?>
+    </p>
+    <?php
 }
 
 // Enqueue media uploader on post edit screen

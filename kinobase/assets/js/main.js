@@ -895,3 +895,31 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 }); // end DOMContentLoaded
+
+/* ============================================================
+   CUSTOM CURSOR — red pulsing heart (mouse devices only)
+   ============================================================ */
+(function () {
+    // Only for pointer:fine devices (mouse/trackpad, not touch)
+    if (!window.matchMedia('(pointer: fine)').matches) return;
+
+    var cur = document.createElement('div');
+    cur.className = 'kb-cursor';
+    cur.innerHTML =
+        '<div class="kb-cursor-inner">' +
+            '<div class="kb-cursor-dot"></div>' +
+            '<svg class="kb-cursor-heart" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
+                '<path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682' +
+                'a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>' +
+            '</svg>' +
+        '</div>';
+    document.body.appendChild(cur);
+
+    document.addEventListener('mousemove', function (e) {
+        cur.style.left = e.clientX + 'px';
+        cur.style.top  = e.clientY + 'px';
+    }, { passive: true });
+
+    document.addEventListener('mouseleave', function () { cur.style.opacity = '0'; });
+    document.addEventListener('mouseenter', function () { cur.style.opacity = '1'; });
+})();

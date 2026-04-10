@@ -529,3 +529,110 @@ function kinobase_nav_with_dropdowns(): void
         echo '</div>'; // .nav-item
     }
 }
+
+/* ============================================================
+   SEO: custom title and meta description
+   ============================================================ */
+
+/**
+ * Replace template variables in a SEO string.
+ */
+function kinobase_replace_seo_vars(string $tpl, int $post_id): string
+{
+    $post = get_post($post_id);
+    if (!$post) return $tpl;
+
+    $year = $genre = $quality_cat = '';
+    foreach (get_the_category($post_id) as $cat) {
+        if (!$cat->parent) continue;
+        $parent = get_term((int) $cat->parent, 'category');
+        if (!$parent || is_wp_error($parent)) continue;
+        $pname = mb_strtolower($parent->name);
+        if (in_array($pname, ['год', 'year', 'годы'], true) && !$year)         $year        = $cat->name;
+        if (in_array($pname, ['жанры', 'жанр', 'genres', 'genre'], true) && !$genre)  $genre       = $cat->name;
+        if (in_array($pname, ['качество', 'quality'], true) && !$quality_cat)  $quality_cat = $cat->name;
+    }
+
+    $vars = [
+        '%название%'     => $post->post_title,
+        '%год%'          => $year,
+        '%жанр%'         => $genre,
+        '%качество%'     => $quality_cat ?: (string) get_post_meta($post_id, 'movie_quality', true),
+        '%длительность%' => (string) get_post_meta($post_id, 'movie_duration', true),
+        '%сайт%'         => get_bloginfo('name'),
+    ];
+
+    return str_replace(array_keys($vars), array_values($vars), $tpl);
+}
+
+// Custom SEO title
+add_filter('pre_get_document_title', 'kinobase_seo_title');
+
+function kinobase_seo_title(string $title): string
+{
+    if (!is_singular(['post', 'movie'])) return $title;
+    $custom = (string) get_post_meta(get_the_ID(), '_kb_seo_title', true);
+    if (!$custom) return $title;
+    return kinobase_replace_seo_vars($custom, get_the_ID());
+}
+
+// Custom meta description
+add_action('wp_head', 'kinobase_seo_description', 1);
+
+function kinobase_seo_description(): void
+{
+    if (!is_singular(['post', 'movie'])) return;
+    $desc = (string) get_post_meta(get_the_ID(), '_kb_seo_description', true);
+    if (!$desc) return;
+    $desc = kinobase_replace_seo_vars($desc, get_the_ID());
+    echo '<meta name="description" content="' . esc_attr($desc) . '">' . "\n";
+}
+
+/* ============================================================
+   Transliteration: auto-convert Cyrillic slugs for movie/actor
+   ============================================================ */
+
+function kinobase_do_transliterate(string $text): string
+{
+    $map = [
+        'а'=>'a','б'=>'b','в'=>'v','г'=>'g','д'=>'d','е'=>'e','ё'=>'yo',
+        'ж'=>'zh','з'=>'z','и'=>'i','й'=>'y','к'=>'k','л'=>'l','м'=>'m',
+        'н'=>'n','о'=>'o','п'=>'p','р'=>'r','с'=>'s','т'=>'t','у'=>'u',
+        'ф'=>'f','х'=>'kh','ц'=>'ts','ч'=>'ch','ш'=>'sh','щ'=>'sch',
+        'ъ'=>'','ы'=>'y','ь'=>'','э'=>'e','ю'=>'yu','я'=>'ya',
+    ];
+    $lower  = mb_strtolower($text);
+    $result = '';
+    foreach (mb_str_split($lower) as $char) {
+        $result .= $map[$char] ?? $char;
+    }
+    $result = preg_replace('/[^a-z0-9]+/', '-', $result) ?? '';
+    return trim($result, '-');
+}
+
+add_action('save_post_movie', 'kinobase_ensure_latin_slug', 20, 2);
+add_action('save_post_actor', 'kinobase_ensure_latin_slug', 20, 2);
+
+function kinobase_ensure_latin_slug(int $post_id, WP_Post $post): void
+{
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+    if ($post->post_status === 'auto-draft') return;
+
+    $slug    = $post->post_name;
+    $decoded = rawurldecode($slug);
+
+    // Skip if no Cyrillic
+    if (!preg_match('/[а-яёА-ЯЁ]/u', $decoded)) return;
+
+    $new_slug = kinobase_do_transliterate($decoded);
+    if (!$new_slug || $new_slug === $slug) return;
+
+    // Avoid infinite loop
+    remove_action('save_post_movie', 'kinobase_ensure_latin_slug', 20);
+    remove_action('save_post_actor', 'kinobase_ensure_latin_slug', 20);
+
+    wp_update_post(['ID' => $post_id, 'post_name' => $new_slug]);
+
+    add_action('save_post_movie', 'kinobase_ensure_latin_slug', 20, 2);
+    add_action('save_post_actor', 'kinobase_ensure_latin_slug', 20, 2);
+}

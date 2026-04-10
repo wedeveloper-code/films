@@ -2438,3 +2438,172 @@ a.mobile-page-num:hover { background: var(--border); color: var(--text); }
   .kb-lb-nav { width: 36px; height: 36px; font-size: 1.4rem; }
   .kb-lb-img { max-width: calc(100vw - 80px); max-height: calc(100vh - 180px); }
 }
+
+/* ============================================================
+   UPDATES BLOCK
+   ============================================================ */
+
+/* 1b. Center promo tags below coupon */
+.card-promo-tags { justify-content: center; }
+
+/* 1c. Bigger movie title on desktop */
+@media (min-width: 768px) {
+  .movie-title { font-size: 1.0625rem; }
+}
+
+/* 1d. Red glow on card hover */
+.movie-card:hover {
+  box-shadow: 0 0 0 2px var(--brand),
+              0 0 22px rgba(255,77,77,0.38),
+              0 10px 25px rgba(0,0,0,0.15);
+  transform: translateY(-3px);
+}
+
+/* 1e. Custom cursor — only on pointer (mouse) devices */
+@media (pointer: fine) {
+  body,
+  body a,
+  body button,
+  body input,
+  body textarea,
+  body select,
+  body [role="button"] { cursor: none !important; }
+
+  .kb-cursor {
+    position: fixed;
+    pointer-events: none;
+    z-index: 999999;
+    top: 0; left: 0;
+    width: 0; height: 0;
+  }
+  .kb-cursor-inner {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .kb-cursor-dot {
+    position: absolute;
+    width: 7px; height: 7px;
+    background: var(--brand);
+    border-radius: 50%;
+    z-index: 2;
+  }
+  .kb-cursor-heart {
+    position: absolute;
+    width: 28px; height: 28px;
+    color: var(--brand);
+    animation: kb-heartbeat 1.4s ease-in-out infinite;
+  }
+  @keyframes kb-heartbeat {
+    0%, 100% { transform: scale(0.65); opacity: 0.35; }
+    50%       { transform: scale(1.35); opacity: 0.85; }
+  }
+}
+
+/* 2. Larger text on single movie page on desktop */
+@media (min-width: 768px) {
+  .single-price-row { font-size: 1.0625rem; }
+  .smeta-value       { font-size: 1.0625rem; }
+  .single-description-text { font-size: 1.125rem; }
+  .review-text       { font-size: 1rem; }
+  .single-section-label { font-size: 1rem; }
+}
+
+/* 3. Red header in pricing table */
+.single-price-col-header {
+  background: var(--brand);
+  color: #fff;
+  border-bottom-color: var(--brand-hover);
+}
+
+/* 4. Coupon hero button (below rating on single page) */
+.single-coupon-hero { margin-bottom: 1.25rem; }
+.coupon-btn-hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 1rem 1.5rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--brand) 0%, #c0392b 100%);
+  color: #fff;
+  border-radius: 0.75rem;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+  box-shadow: 0 4px 18px rgba(255,77,77,0.45);
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+.coupon-btn-hero:hover {
+  opacity: 0.92;
+  transform: translateY(-2px);
+  box-shadow: 0 7px 24px rgba(255,77,77,0.55);
+}
+
+/* 5. Box office table — tighter columns */
+.box-office-table td:first-child { width: 45%; }
+.box-office-table td:last-child  { padding-left: 1rem; }
+
+/* 6. Bigger text in Подборки */
+.collection-tag { font-size: 0.9375rem; padding: 0.35rem 0.9rem; }
+
+/* 7. h3 visual size increase */
+h3 { font-size: 1.25rem; }
+
+/* 8. Filter bar always visible (also on mobile) */
+.filter-bar { display: flex !important; }
+
+/* 9. Prevent horizontal scroll on single movie page mobile */
+@media (max-width: 767px) {
+  .single-movie  { overflow-x: hidden; max-width: 100%; }
+  .single-layout { overflow-x: hidden; }
+  .single-price-split { flex-direction: column; }
+  .single-price-col + .single-price-col { border-left: none; border-top: 1px solid var(--border); }
+}
+
+/* 11. Coupon button full width on mobile */
+@media (max-width: 767px) {
+  .single-coupon-aside { width: 100%; }
+  .coupon-btn-tall { max-width: 100%; min-width: 0; width: 100%; }
+}
+
+/* 13. Filter bar bigger text on desktop */
+@media (min-width: 768px) {
+  .filter-bar-btn { font-size: 0.9375rem; }
+  .filter-bar-drop ul li a { font-size: 0.9375rem; }
+}
+
+/* 15. Primary nav — bigger + brand color */
+.nav-primary a,
+.nav-primary .nav-item-link {
+  font-size: 1rem;
+  color: var(--brand);
+}
+.nav-primary a:hover,
+.nav-primary a.current-menu-item,
+.nav-primary .nav-item:hover .nav-item-link,
+.nav-primary .nav-item.current-menu-item .nav-item-link {
+  color: var(--brand-hover);
+}
+
+/* 17. Meta table — visible borders + red labels */
+.single-meta-table {
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border-collapse: separate;
+}
+.single-meta-table tr:last-child { border-bottom: none; }
+.smeta-label {
+  color: var(--brand);
+  border-right: 1px solid var(--border);
+  background: rgba(255,77,77,0.06);
+  font-weight: 600;
+  padding-left: 0.75rem;
+}
+.smeta-value { padding-left: 0.875rem; }

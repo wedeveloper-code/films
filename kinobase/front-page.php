@@ -59,14 +59,11 @@ if ($year_parent) {
                     </h1>
                 </div>
 
-                <?php if ($has_filter_menu) :
-                    kinobase_render_mobile_filter_panel('kinobase_filters', $home_active_url, $home_reset_url);
-                endif; ?>
             </div><!-- .catalog-heading-row -->
 
             <?php if ($has_filter_menu) : ?>
-            <!-- Desktop filter bar — managed at wp-admin/nav-menus.php → Меню фильтров -->
-            <div class="filter-bar filter-desktop-only">
+            <!-- Filter bar — Год / Жанр / Качество -->
+            <div class="filter-bar">
                 <?php kinobase_render_desktop_filter_bar($home_active_url, $home_reset_url); ?>
             </div>
             <?php endif; ?>

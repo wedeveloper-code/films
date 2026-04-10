@@ -92,7 +92,7 @@
                                 <?php esc_html_e('Профиль', 'kinobase'); ?>
                             </a>
                         <?php else : ?>
-                            <a href="<?php echo esc_url(wp_login_url(get_permalink())); ?>" class="dropdown-item" role="menuitem">
+                            <a href="<?php echo esc_url(wp_login_url(home_url('/'))); ?>" class="dropdown-item" role="menuitem">
                                 <?php esc_html_e('Войти', 'kinobase'); ?>
                             </a>
                             <a href="<?php echo esc_url(wp_registration_url()); ?>" class="dropdown-item" role="menuitem">

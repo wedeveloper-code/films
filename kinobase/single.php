@@ -163,14 +163,13 @@ while (have_posts()) :
                     </div>
                     <?php endif; ?>
 
-                    <!-- Category tags -->
-                    <?php if (!empty($categories)) : ?>
-                    <div class="single-tags">
-                        <?php foreach ($categories as $cat) : ?>
-                        <a href="<?php echo esc_url(get_category_link($cat->term_id)); ?>" class="single-tag">
-                            <?php echo esc_html($cat->name); ?>
-                        </a>
-                        <?php endforeach; ?>
+                    <!-- Coupon hero button (below rating, above category blocks) -->
+                    <?php if ($coupon) : ?>
+                    <div class="single-coupon-hero">
+                        <button class="coupon-btn coupon-btn-hero"
+                                data-coupon="<?php echo esc_attr(strtoupper($coupon)); ?>">
+                            🎟 <?php esc_html_e('Показать купон на скидку', 'kinobase'); ?>
+                        </button>
                     </div>
                     <?php endif; ?>
 
@@ -199,10 +198,9 @@ while (have_posts()) :
                         }
                     }
                     ?>
-                    <!-- Category blocks + Coupon (side by side) -->
-                    <?php if (!empty($main_cat_groups) || $coupon) : ?>
+                    <!-- Category blocks -->
+                    <?php if (!empty($main_cat_groups)) : ?>
                     <div class="single-cat-coupon-row">
-                        <?php if (!empty($main_cat_groups)) : ?>
                         <div class="single-cat-blocks">
                             <?php foreach ($main_cat_groups as $group) : ?>
                             <div class="single-cat-block">
@@ -216,16 +214,6 @@ while (have_posts()) :
                             </div>
                             <?php endforeach; ?>
                         </div>
-                        <?php endif; ?>
-
-                        <?php if ($coupon) : ?>
-                        <div class="single-coupon-aside">
-                            <button class="coupon-btn coupon-btn-tall"
-                                    data-coupon="<?php echo esc_attr(strtoupper($coupon)); ?>">
-                                <?php esc_html_e('Показать купон на скидку', 'kinobase'); ?>
-                            </button>
-                        </div>
-                        <?php endif; ?>
                     </div>
                     <?php endif; ?>
 
