@@ -199,19 +199,33 @@ while (have_posts()) :
                         }
                     }
                     ?>
-                    <?php if (!empty($main_cat_groups)) : ?>
-                    <div class="single-cat-blocks">
-                        <?php foreach ($main_cat_groups as $group) : ?>
-                        <div class="single-cat-block">
-                            <span class="scb-label"><?php echo esc_html($group['parent']->name); ?></span>
-                            <div class="scb-values">
-                                <?php foreach ($group['terms'] as $t) : ?>
-                                <a href="<?php echo esc_url(get_category_link($t->term_id)); ?>"
-                                   class="smeta-cat-link"><?php echo esc_html($t->name); ?></a>
-                                <?php endforeach; ?>
+                    <!-- Category blocks + Coupon (side by side) -->
+                    <?php if (!empty($main_cat_groups) || $coupon) : ?>
+                    <div class="single-cat-coupon-row">
+                        <?php if (!empty($main_cat_groups)) : ?>
+                        <div class="single-cat-blocks">
+                            <?php foreach ($main_cat_groups as $group) : ?>
+                            <div class="single-cat-block">
+                                <span class="scb-label"><?php echo esc_html($group['parent']->name); ?></span>
+                                <div class="scb-values">
+                                    <?php foreach ($group['terms'] as $t) : ?>
+                                    <a href="<?php echo esc_url(get_category_link($t->term_id)); ?>"
+                                       class="smeta-cat-link"><?php echo esc_html($t->name); ?></a>
+                                    <?php endforeach; ?>
+                                </div>
                             </div>
+                            <?php endforeach; ?>
                         </div>
-                        <?php endforeach; ?>
+                        <?php endif; ?>
+
+                        <?php if ($coupon) : ?>
+                        <div class="single-coupon-aside">
+                            <button class="coupon-btn coupon-btn-tall"
+                                    data-coupon="<?php echo esc_attr(strtoupper($coupon)); ?>">
+                                <?php esc_html_e('Показать купон на скидку', 'kinobase'); ?>
+                            </button>
+                        </div>
+                        <?php endif; ?>
                     </div>
                     <?php endif; ?>
 
@@ -285,56 +299,42 @@ while (have_posts()) :
                     </div>
                     <?php endif; ?>
 
-                    <!-- Pricing -->
+                    <!-- Pricing (split: Аренда left / Покупка right) -->
                     <div class="single-pricing">
                         <h3 class="single-section-label"><?php esc_html_e('Доступ к фильму', 'kinobase'); ?></h3>
 
-                        <div class="price-tabs" role="tablist">
-                            <button class="price-tab active" data-tab="rent" role="tab" aria-selected="true">
-                                <?php esc_html_e('Аренда', 'kinobase'); ?>
-                            </button>
-                            <button class="price-tab" data-tab="buy" role="tab" aria-selected="false">
-                                <?php esc_html_e('Покупка', 'kinobase'); ?>
-                            </button>
+                        <div class="single-price-split">
+                            <div class="single-price-col">
+                                <div class="single-price-col-header"><?php esc_html_e('Аренда', 'kinobase'); ?></div>
+                                <div class="single-price-row">
+                                    <span><?php esc_html_e('1 просмотр', 'kinobase'); ?></span>
+                                    <strong><?php echo esc_html(kb_price($rent1)); ?></strong>
+                                </div>
+                                <div class="single-price-row">
+                                    <span><?php esc_html_e('3 просмотра', 'kinobase'); ?></span>
+                                    <strong><?php echo esc_html(kb_price($rent3)); ?></strong>
+                                </div>
+                                <div class="single-price-row">
+                                    <span><?php esc_html_e('5 просмотров', 'kinobase'); ?></span>
+                                    <strong><?php echo esc_html(kb_price($rent5)); ?></strong>
+                                </div>
+                            </div>
+                            <div class="single-price-col">
+                                <div class="single-price-col-header"><?php esc_html_e('Покупка', 'kinobase'); ?></div>
+                                <div class="single-price-row">
+                                    <span><?php esc_html_e('Неделя', 'kinobase'); ?></span>
+                                    <strong><?php echo esc_html(kb_price($buy_week)); ?></strong>
+                                </div>
+                                <div class="single-price-row">
+                                    <span><?php esc_html_e('Месяц', 'kinobase'); ?></span>
+                                    <strong><?php echo esc_html(kb_price($buy_month)); ?></strong>
+                                </div>
+                                <div class="single-price-row">
+                                    <span><?php esc_html_e('Навсегда', 'kinobase'); ?></span>
+                                    <strong><?php echo esc_html(kb_price($buy_forever)); ?></strong>
+                                </div>
+                            </div>
                         </div>
-
-                        <div class="price-grid" data-type="rent" role="tabpanel">
-                            <button class="price-cell">
-                                <?php esc_html_e('1 просмотр', 'kinobase'); ?>
-                                <strong><?php echo esc_html($rent1 > 0 ? number_format($rent1) . '₽' : '—'); ?></strong>
-                            </button>
-                            <button class="price-cell">
-                                <?php esc_html_e('3 просмотра', 'kinobase'); ?>
-                                <strong><?php echo esc_html($rent3 > 0 ? number_format($rent3) . '₽' : '—'); ?></strong>
-                            </button>
-                            <button class="price-cell">
-                                <?php esc_html_e('5 просмотров', 'kinobase'); ?>
-                                <strong><?php echo esc_html($rent5 > 0 ? number_format($rent5) . '₽' : '—'); ?></strong>
-                            </button>
-                        </div>
-
-                        <div class="price-grid hidden" data-type="buy" role="tabpanel">
-                            <button class="price-cell">
-                                <?php esc_html_e('Неделя', 'kinobase'); ?>
-                                <strong><?php echo esc_html($buy_week > 0 ? number_format($buy_week) . '₽' : '—'); ?></strong>
-                            </button>
-                            <button class="price-cell">
-                                <?php esc_html_e('Месяц', 'kinobase'); ?>
-                                <strong><?php echo esc_html($buy_month > 0 ? number_format($buy_month) . '₽' : '—'); ?></strong>
-                            </button>
-                            <button class="price-cell">
-                                <?php esc_html_e('Навсегда', 'kinobase'); ?>
-                                <strong><?php echo esc_html($buy_forever > 0 ? number_format($buy_forever) . '₽' : '—'); ?></strong>
-                            </button>
-                        </div>
-
-                        <?php if ($coupon) : ?>
-                        <div class="coupon-wrap" style="margin-top:0.75rem;">
-                            <button class="coupon-btn" data-coupon="<?php echo esc_attr(strtoupper($coupon)); ?>">
-                                <?php esc_html_e('Показать купон на скидку', 'kinobase'); ?>
-                            </button>
-                        </div>
-                        <?php endif; ?>
                     </div>
 
                     <!-- Description -->

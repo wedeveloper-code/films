@@ -32,23 +32,29 @@ if (empty($gallery_ids) && has_post_thumbnail()) {
     $gallery_ids = [get_post_thumbnail_id()];
 }
 
-// Category groups (replaces manual year/genre meta)
-$card_cat_groups = [];
+// Category-based info: year, quality, promo tags (Акция/Скидки/Бонусы)
+$card_year        = '';
+$card_quality_cat = '';
+$card_promo_tags  = [];
+
+$_promo_names = ['акция', 'акции', 'скидки', 'скидка', 'бонусы', 'бонус'];
+
 foreach (get_the_category() as $cat) {
     if ($cat->parent === 0) continue;
     $parent = get_term((int) $cat->parent, 'category');
     if (!$parent || is_wp_error($parent)) continue;
-    if (!isset($card_cat_groups[$parent->term_id])) {
-        $card_cat_groups[$parent->term_id] = ['parent' => $parent, 'terms' => []];
+    $pname = mb_strtolower($parent->name);
+    if (in_array($pname, ['год', 'year', 'годы'], true) && !$card_year) {
+        $card_year = $cat->name;
+    } elseif (in_array($pname, ['качество', 'quality'], true) && !$card_quality_cat) {
+        $card_quality_cat = $cat->name;
+    } elseif (in_array($pname, $_promo_names, true)) {
+        $card_promo_tags[] = $cat;
     }
-    $card_cat_groups[$parent->term_id]['terms'][] = $cat;
 }
-$card_cat_groups = array_slice($card_cat_groups, 0, 2, true); // max 2 rows
 
-// Movie meta
-$duration    = get_post_meta($post_id, 'movie_duration', true);
+// Movie meta (from meta-boxes)
 $quality     = get_post_meta($post_id, 'movie_quality', true) ?: 'HD';
-$translation = get_post_meta($post_id, 'movie_translation', true);
 $views       = (int) get_post_meta($post_id, 'movie_views', true);
 
 // Prices
@@ -70,6 +76,9 @@ $rating_val = ($rating_raw !== '' && $rating_raw !== false) ? (float) $rating_ra
 $views_fmt = $views >= 1000
     ? round($views / 1000, 1) . 'K'
     : (string) $views;
+
+// Year+Quality one-liner (prefer category value, fallback to meta for quality)
+$card_info_parts = array_filter([$card_year, $card_quality_cat ?: $quality]);
 
 ?>
 <article class="movie-card" data-post-id="<?php echo esc_attr((string) $post_id); ?>">
@@ -139,7 +148,7 @@ $views_fmt = $views >= 1000
         <div class="img-indicators" aria-hidden="true">
             <?php for ($ind = 0; $ind < min($img_count, 4); $ind++) : ?>
             <div class="indicator-track">
-                <div class="indicator-fill<?php echo $ind === 0 ? '' : ''; ?>"></div>
+                <div class="indicator-fill"></div>
             </div>
             <?php endfor; ?>
         </div>
@@ -155,15 +164,9 @@ $views_fmt = $views >= 1000
             <a href="<?php echo esc_url($permalink); ?>"><?php echo esc_html($title); ?></a>
         </h3>
 
-        <?php if (!empty($card_cat_groups)) : ?>
-        <table class="movie-meta">
-            <?php foreach ($card_cat_groups as $group) : ?>
-            <tr>
-                <td><?php echo esc_html($group['parent']->name); ?>:</td>
-                <td class="truncate"><?php echo esc_html(implode(', ', array_map(fn($t) => $t->name, $group['terms']))); ?></td>
-            </tr>
-            <?php endforeach; ?>
-        </table>
+        <!-- Year · Quality (one line from categories) -->
+        <?php if (!empty($card_info_parts)) : ?>
+        <div class="card-year-quality"><?php echo esc_html(implode(' · ', $card_info_parts)); ?></div>
         <?php endif; ?>
 
         <!-- Pricing -->
@@ -214,28 +217,18 @@ $views_fmt = $views >= 1000
             </div>
             <?php endif; ?>
 
-            <!-- Extra info -->
-            <?php if ($quality || $translation || $duration) : ?>
-            <div class="movie-extra">
-                <div class="extra-item">
-                    <span class="extra-label"><?php esc_html_e('Качество', 'kinobase'); ?></span>
-                    <span class="extra-value"><?php echo esc_html($quality ?: '—'); ?></span>
-                </div>
-                <div class="extra-item">
-                    <span class="extra-label"><?php esc_html_e('Перевод', 'kinobase'); ?></span>
-                    <span class="extra-value" title="<?php echo esc_attr($translation ?: '—'); ?>">
-                        <?php echo esc_html($translation ? mb_substr($translation, 0, 6) . (mb_strlen($translation) > 6 ? '.' : '') : '—'); ?>
-                    </span>
-                </div>
-                <div class="extra-item">
-                    <span class="extra-label"><?php esc_html_e('Время', 'kinobase'); ?></span>
-                    <span class="extra-value"><?php echo esc_html($duration ?: '—'); ?></span>
-                </div>
-            </div>
-            <?php endif; ?>
-
         </div>
         <!-- /Pricing -->
+
+        <!-- Promo tags (Акция / Скидки / Бонусы from categories) -->
+        <?php if (!empty($card_promo_tags)) : ?>
+        <div class="card-promo-tags">
+            <?php foreach ($card_promo_tags as $t) : ?>
+            <a href="<?php echo esc_url(get_category_link($t->term_id)); ?>"
+               class="card-promo-tag"><?php echo esc_html($t->name); ?></a>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
 
     </div>
     <!-- /Card body -->

@@ -490,16 +490,38 @@ ul, ol { list-style: none; }
 }
 .movie-title a:hover { color: var(--brand); }
 
-.movie-meta {
-  width: 100%;
-  font-size: 0.8125rem;
+/* Year · Quality one-liner under card title */
+.card-year-quality {
+  font-size: 0.8rem;
   color: var(--text-muted);
-  margin-bottom: 0.875rem;
-  border-collapse: collapse;
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
 }
-.movie-meta td { padding-bottom: 0.2rem; vertical-align: top; }
-.movie-meta td:first-child { width: 3rem; white-space: nowrap; }
-.movie-meta td:last-child { color: var(--text); font-weight: 500; }
+
+/* Promo tags (Акция / Скидки / Бонусы) below coupon */
+.card-promo-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+}
+.card-promo-tag {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  background: rgba(255, 77, 77, 0.12);
+  color: var(--brand);
+  border: 1px solid rgba(255, 77, 77, 0.3);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+.card-promo-tag:hover {
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
+}
 
 /* Pricing section */
 .pricing { margin-top: auto; }
@@ -859,23 +881,25 @@ ul, ol { list-style: none; }
 /* Meta table */
 .single-meta-table {
   width: 100%;
-  font-size: 0.9375rem;
+  font-size: 1rem;
   border-collapse: collapse;
   margin-bottom: 1.25rem;
 }
 .single-meta-table tr { border-bottom: 1px solid var(--border); }
 .smeta-label {
-  padding: 0.5rem 1rem 0.5rem 0;
+  padding: 0.55rem 1rem 0.55rem 0;
   vertical-align: top;
   color: var(--text-muted);
   font-weight: 500;
   width: 9rem;
   white-space: nowrap;
+  font-size: 0.9375rem;
 }
 .smeta-value {
-  padding: 0.5rem 0;
+  padding: 0.55rem 0;
   vertical-align: top;
   color: var(--text);
+  font-size: 1rem;
 }
 
 /* Box office */
@@ -906,12 +930,83 @@ ul, ol { list-style: none; }
   margin-bottom: 1.25rem;
 }
 
+/* Split price table: Аренда left | Покупка right */
+.single-price-split {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+.single-price-col {
+  flex: 1;
+  min-width: 0;
+}
+.single-price-col + .single-price-col {
+  border-left: 1px solid var(--border);
+}
+.single-price-col-header {
+  background: var(--price-bg);
+  padding: 0.55rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+.single-price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.55rem 1rem;
+  font-size: 1rem;
+}
+.single-price-row + .single-price-row { border-top: 1px solid var(--border); }
+.single-price-row span { color: var(--text-muted); }
+.single-price-row strong { color: var(--brand); font-weight: 700; }
+
+/* Category blocks + Coupon side by side */
+.single-cat-coupon-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: stretch;
+  margin-bottom: 1.25rem;
+}
+.single-cat-coupon-row .single-cat-blocks {
+  flex: 1;
+  margin-bottom: 0;
+}
+.single-coupon-aside {
+  flex-shrink: 0;
+  display: flex;
+}
+.coupon-btn-tall {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-width: 130px;
+  max-width: 160px;
+  width: 100%;
+  white-space: normal;
+  line-height: 1.3;
+  font-size: 0.9rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--brand);
+  color: #fff;
+  font-weight: 700;
+  transition: background 0.15s;
+  border: none;
+  cursor: pointer;
+}
+.coupon-btn-tall:hover { background: var(--brand-hover); }
+
 /* Description */
 .single-description { margin-bottom: 1.5rem; }
 .single-description-text {
   color: var(--text-muted);
-  line-height: 1.75;
-  font-size: 0.9375rem;
+  line-height: 1.8;
+  font-size: 1.0625rem;
 }
 .single-description-text p { margin-bottom: 0.75rem; }
 
@@ -2165,7 +2260,7 @@ a.mobile-page-num:hover { background: var(--border); color: var(--text); }
   display: flex;
   flex-wrap: wrap;
   gap: 0.2rem 0.4rem;
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: 500;
 }
 
