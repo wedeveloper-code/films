@@ -636,30 +636,3 @@ function kinobase_ensure_latin_slug(int $post_id, WP_Post $post): void
     add_action('save_post_movie', 'kinobase_ensure_latin_slug', 20, 2);
     add_action('save_post_actor', 'kinobase_ensure_latin_slug', 20, 2);
 }
-
-/* ============================================================
-   Customizer — Footer settings
-   ============================================================ */
-
-add_action('customize_register', 'kinobase_customizer_register');
-
-function kinobase_customizer_register(WP_Customize_Manager $wp_customize): void
-{
-    $wp_customize->add_section('kinobase_footer', [
-        'title'    => __('Подвал сайта', 'kinobase'),
-        'priority' => 120,
-    ]);
-
-    $wp_customize->add_setting('kinobase_footer_copyright', [
-        'default'           => '',
-        'sanitize_callback' => 'wp_kses_post',
-        'transport'         => 'refresh',
-    ]);
-
-    $wp_customize->add_control('kinobase_footer_copyright', [
-        'label'       => __('Текст копирайта', 'kinobase'),
-        'description' => __('Поддерживает HTML. Оставьте пустым — будет использован текст по умолчанию.', 'kinobase'),
-        'section'     => 'kinobase_footer',
-        'type'        => 'textarea',
-    ]);
-}
