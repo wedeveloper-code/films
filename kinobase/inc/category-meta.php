@@ -111,12 +111,9 @@ add_action('category_edit_form_fields', 'kb_cat_seo_fields');
 
 function kb_cat_seo_fields(WP_Term $term): void
 {
-    $h1        = (string) get_term_meta($term->term_id, '_kb_cat_h1',              true);
-    $seo_title = (string) get_term_meta($term->term_id, '_kb_cat_seo_title',       true);
-    $seo_desc  = (string) get_term_meta($term->term_id, '_kb_cat_seo_desc',        true);
-    $f_h1      = (string) get_term_meta($term->term_id, '_kb_cat_filter_h1_tpl',        true);
-    $f_title   = (string) get_term_meta($term->term_id, '_kb_cat_filter_seo_title_tpl', true);
-    $f_desc    = (string) get_term_meta($term->term_id, '_kb_cat_filter_seo_desc_tpl',  true);
+    $h1        = (string) get_term_meta($term->term_id, '_kb_cat_h1',        true);
+    $seo_title = (string) get_term_meta($term->term_id, '_kb_cat_seo_title', true);
+    $seo_desc  = (string) get_term_meta($term->term_id, '_kb_cat_seo_desc',  true);
     ?>
     <tr class="form-field">
         <th scope="row">
@@ -153,58 +150,6 @@ function kb_cat_seo_fields(WP_Term $term): void
                 <?php esc_html_e('Оставьте пустым — будет использован глобальный шаблон из Параметры → SEO рубрик.', 'kinobase'); ?>
             </p>
             <?php echo kb_cat_vars_reference_html(); ?>
-        </td>
-    </tr>
-
-    <tr class="form-field">
-        <th scope="row" colspan="2">
-            <hr style="margin:0.5rem 0">
-            <strong><?php esc_html_e('Шаблоны для страниц с фильтром', 'kinobase'); ?></strong>
-            <p class="description" style="font-weight:normal;margin-top:0.4rem">
-                <?php esc_html_e(
-                    'Заполните, если дочерние рубрики этой категории используются как фильтры '
-                    . '(например «Год» → 2020, «Качество» → HD). '
-                    . 'Шаблон применяется на страницах вида /category/films/2020/ — '
-                    . 'т.е. когда в URL используется дочерняя рубрика этой категории.',
-                    'kinobase'
-                ); ?>
-            </p>
-        </th>
-    </tr>
-    <tr class="form-field">
-        <th scope="row">
-            <label for="_kb_cat_filter_h1_tpl"><?php esc_html_e('H1 (шаблон фильтра)', 'kinobase'); ?></label>
-        </th>
-        <td>
-            <input type="text" id="_kb_cat_filter_h1_tpl" name="_kb_cat_filter_h1_tpl"
-                   value="<?php echo esc_attr($f_h1); ?>" style="width:100%">
-            <p class="description">
-                <?php printf(esc_html__('Пример для «Год»: %s', 'kinobase'),
-                    '<code>' . esc_html('%название_рубрики% %фильтр% года') . '</code>'); ?>
-            </p>
-        </td>
-    </tr>
-    <tr class="form-field">
-        <th scope="row">
-            <label for="_kb_cat_filter_seo_title_tpl"><?php esc_html_e('SEO Title (шаблон фильтра)', 'kinobase'); ?></label>
-        </th>
-        <td>
-            <input type="text" id="_kb_cat_filter_seo_title_tpl" name="_kb_cat_filter_seo_title_tpl"
-                   value="<?php echo esc_attr($f_title); ?>" style="width:100%">
-            <p class="description">
-                <?php printf(esc_html__('Пример: %s', 'kinobase'),
-                    '<code>' . esc_html('%название_рубрики% %фильтр% года — смотреть онлайн | %сайт%') . '</code>'); ?>
-            </p>
-        </td>
-    </tr>
-    <tr class="form-field">
-        <th scope="row">
-            <label for="_kb_cat_filter_seo_desc_tpl"><?php esc_html_e('SEO Description (шаблон фильтра)', 'kinobase'); ?></label>
-        </th>
-        <td>
-            <textarea id="_kb_cat_filter_seo_desc_tpl" name="_kb_cat_filter_seo_desc_tpl"
-                      rows="3" cols="50" style="width:100%"><?php echo esc_textarea($f_desc); ?></textarea>
-            <?php echo kb_cat_vars_reference_html(true); ?>
         </td>
     </tr>
     <?php
@@ -265,29 +210,6 @@ function kb_cat_save_meta(int $term_id): void
         );
     }
 
-    if (isset($_POST['_kb_cat_filter_h1_tpl'])) {
-        update_term_meta(
-            $term_id,
-            '_kb_cat_filter_h1_tpl',
-            sanitize_text_field(wp_unslash($_POST['_kb_cat_filter_h1_tpl']))
-        );
-    }
-
-    if (isset($_POST['_kb_cat_filter_seo_title_tpl'])) {
-        update_term_meta(
-            $term_id,
-            '_kb_cat_filter_seo_title_tpl',
-            sanitize_text_field(wp_unslash($_POST['_kb_cat_filter_seo_title_tpl']))
-        );
-    }
-
-    if (isset($_POST['_kb_cat_filter_seo_desc_tpl'])) {
-        update_term_meta(
-            $term_id,
-            '_kb_cat_filter_seo_desc_tpl',
-            sanitize_textarea_field(wp_unslash($_POST['_kb_cat_filter_seo_desc_tpl']))
-        );
-    }
 }
 
 /* ============================================================
@@ -323,19 +245,6 @@ function kb_cat_seo_register_settings(): void
         'sanitize_callback' => 'sanitize_textarea_field',
         'default'           => '',
     ]);
-    // Filter-page templates (e.g. /category/films/2020/)
-    register_setting('kb_cat_seo_group', 'kb_cat_filter_h1_tpl', [
-        'sanitize_callback' => 'sanitize_text_field',
-        'default'           => '',
-    ]);
-    register_setting('kb_cat_seo_group', 'kb_cat_filter_seo_title_tpl', [
-        'sanitize_callback' => 'sanitize_text_field',
-        'default'           => '',
-    ]);
-    register_setting('kb_cat_seo_group', 'kb_cat_filter_seo_desc_tpl', [
-        'sanitize_callback' => 'sanitize_textarea_field',
-        'default'           => '',
-    ]);
 }
 
 function kb_cat_seo_settings_page(): void
@@ -348,9 +257,6 @@ function kb_cat_seo_settings_page(): void
     $title_default = '%название_рубрики% — смотреть онлайн | %сайт%';
     $title_val     = (string) get_option('kb_cat_seo_title_tpl', $title_default);
     $desc_val      = (string) get_option('kb_cat_seo_desc_tpl',  '');
-    $f_h1_val      = (string) get_option('kb_cat_filter_h1_tpl',         '');
-    $f_title_val   = (string) get_option('kb_cat_filter_seo_title_tpl',  '');
-    $f_desc_val    = (string) get_option('kb_cat_filter_seo_desc_tpl',   '');
     ?>
     <div class="wrap">
         <h1><?php esc_html_e('SEO шаблоны страниц рубрик', 'kinobase'); ?></h1>
@@ -421,73 +327,6 @@ function kb_cat_seo_settings_page(): void
             <?php submit_button(__('Сохранить шаблоны', 'kinobase')); ?>
         </form>
 
-        <hr style="margin:2rem 0">
-
-        <h2 style="font-size:1.2rem"><?php esc_html_e('Шаблоны для страниц с фильтром', 'kinobase'); ?></h2>
-        <p style="max-width:680px;color:#555;margin-bottom:1.5rem">
-            <?php esc_html_e(
-                'Применяются когда активен фильтр второй рубрики — например /category/films/2020/. '
-                . 'Если оставить пустым — будет использован обычный шаблон рубрики с пустым значением %фильтр%.',
-                'kinobase'
-            ); ?>
-        </p>
-
-        <form method="post" action="options.php">
-            <?php settings_fields('kb_cat_seo_group'); ?>
-
-            <table class="form-table" role="presentation">
-                <tr>
-                    <th scope="row">
-                        <label for="kb_cat_filter_h1_tpl"><?php esc_html_e('Шаблон H1', 'kinobase'); ?></label>
-                    </th>
-                    <td>
-                        <input type="text" id="kb_cat_filter_h1_tpl" name="kb_cat_filter_h1_tpl"
-                               value="<?php echo esc_attr($f_h1_val); ?>" class="large-text">
-                        <p class="description">
-                            <?php printf(
-                                esc_html__('Пример: %s', 'kinobase'),
-                                '<code>' . esc_html('%название_рубрики% %фильтр% года') . '</code>'
-                            ); ?>
-                        </p>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row">
-                        <label for="kb_cat_filter_seo_title_tpl"><?php esc_html_e('Шаблон &lt;title&gt;', 'kinobase'); ?></label>
-                    </th>
-                    <td>
-                        <input type="text" id="kb_cat_filter_seo_title_tpl" name="kb_cat_filter_seo_title_tpl"
-                               value="<?php echo esc_attr($f_title_val); ?>" class="large-text">
-                        <p class="description">
-                            <?php printf(
-                                esc_html__('Пример: %s', 'kinobase'),
-                                '<code>' . esc_html('%название_рубрики% %фильтр% — смотреть онлайн | %сайт%') . '</code>'
-                            ); ?>
-                        </p>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row">
-                        <label for="kb_cat_filter_seo_desc_tpl"><?php esc_html_e('Шаблон Description', 'kinobase'); ?></label>
-                    </th>
-                    <td>
-                        <textarea id="kb_cat_filter_seo_desc_tpl" name="kb_cat_filter_seo_desc_tpl"
-                                  rows="4" class="large-text"><?php echo esc_textarea($f_desc_val); ?></textarea>
-                        <p class="description">
-                            <?php printf(
-                                esc_html__('Пример: %s', 'kinobase'),
-                                '<code>' . esc_html('Смотрите %название_рубрики% %фильтр% года онлайн на %сайт%.') . '</code>'
-                            ); ?>
-                        </p>
-                    </td>
-                </tr>
-            </table>
-
-            <?php echo kb_cat_vars_reference_html(true); ?>
-            <br>
-
-            <?php submit_button(__('Сохранить шаблоны', 'kinobase')); ?>
-        </form>
     </div>
     <?php
 }
@@ -497,31 +336,26 @@ function kb_cat_seo_settings_page(): void
    ============================================================ */
 
 /**
- * Resolves a filter-page template string.
- * Priority: per-parent-category term_meta → global WP option → empty string.
+ * Returns the filter-page template for the given field ('h1', 'title', 'desc').
+ * Looks up the kb_filter_templates option by the filter term's parent category.
  *
- * @param WP_Term $filter_term  The active filter term (e.g. "2020", "HD").
- * @param string  $meta_key     Term meta key to look up on the filter's parent.
- * @param string  $option_key   Global fallback option key.
+ * @param WP_Term $filter_term Active filter term (e.g. "2020", "HD").
+ * @param string  $field       'h1' | 'title' | 'desc'
  */
-function kb_get_filter_tpl(WP_Term $filter_term, string $meta_key, string $option_key): string
+function kb_get_filter_tpl(WP_Term $filter_term, string $field): string
 {
-    // 1. Per-parent template (e.g. set on "Год" or "Качество" category)
-    if ($filter_term->parent) {
-        $tpl = (string) get_term_meta((int) $filter_term->parent, $meta_key, true);
-        if ($tpl !== '') {
-            return $tpl;
-        }
+    if (!$filter_term->parent) {
+        return '';
     }
-
-    // 2. Global filter-page template
-    return (string) get_option($option_key, '');
+    $templates = (array) get_option('kb_filter_templates', []);
+    $parent_id = (string) $filter_term->parent;
+    return (string) ($templates[$parent_id][$field] ?? '');
 }
 
 function kb_cat_h1(WP_Term $term, ?WP_Term $filter_term = null): string
 {
     if ($filter_term) {
-        $tpl = kb_get_filter_tpl($filter_term, '_kb_cat_filter_h1_tpl', 'kb_cat_filter_h1_tpl');
+        $tpl = kb_get_filter_tpl($filter_term, 'h1');
         if ($tpl) {
             return kb_replace_cat_vars($tpl, $term, $filter_term);
         }
@@ -559,7 +393,7 @@ function kb_cat_seo_title(string $title): string
     // Filter page: /category/films/2020/
     $filter_term = kb_get_active_filter_term();
     if ($filter_term) {
-        $tpl = kb_get_filter_tpl($filter_term, '_kb_cat_filter_seo_title_tpl', 'kb_cat_filter_seo_title_tpl');
+        $tpl = kb_get_filter_tpl($filter_term, 'title');
         if ($tpl) {
             return kb_replace_cat_vars($tpl, $term, $filter_term);
         }
@@ -594,7 +428,7 @@ function kb_cat_seo_description(): void
     // Filter page: /category/films/2020/
     $filter_term = kb_get_active_filter_term();
     if ($filter_term) {
-        $tpl = kb_get_filter_tpl($filter_term, '_kb_cat_filter_seo_desc_tpl', 'kb_cat_filter_seo_desc_tpl');
+        $tpl = kb_get_filter_tpl($filter_term, 'desc');
         if ($tpl) {
             $desc = kb_replace_cat_vars($tpl, $term, $filter_term);
             echo '<meta name="description" content="' . esc_attr($desc) . '">' . "\n";
@@ -611,6 +445,195 @@ function kb_cat_seo_description(): void
 
     $desc = kb_replace_cat_vars($tpl, $term);
     echo '<meta name="description" content="' . esc_attr($desc) . '">' . "\n";
+}
+
+/* ============================================================
+   4. SEO FILTER TEMPLATES — Параметры → SEO фильтров
+   A dedicated settings page where the admin picks filter-parent
+   categories (Год, Качество, …) and sets H1/Title/Description
+   templates for each. Stored as a single option 'kb_filter_templates'.
+   ============================================================ */
+
+add_action('admin_menu', 'kb_filter_seo_admin_menu');
+
+function kb_filter_seo_admin_menu(): void
+{
+    add_options_page(
+        __('SEO фильтров', 'kinobase'),
+        __('SEO фильтров', 'kinobase'),
+        'manage_options',
+        'kb_filter_seo',
+        'kb_filter_seo_settings_page'
+    );
+}
+
+function kb_filter_seo_settings_page(): void
+{
+    if (!current_user_can('manage_options')) {
+        return;
+    }
+
+    $nonce_action = 'kb_filter_seo_save';
+    $templates    = (array) get_option('kb_filter_templates', []);
+    $notice       = '';
+
+    // Handle form submission
+    if (
+        isset($_POST['kb_filter_seo_nonce']) &&
+        wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['kb_filter_seo_nonce'])), $nonce_action)
+    ) {
+        // Add new category
+        if (!empty($_POST['kb_add_cat'])) {
+            $add_id = (string) (int) $_POST['kb_add_cat'];
+            if ($add_id !== '0' && !isset($templates[$add_id])) {
+                $templates[$add_id] = ['h1' => '', 'title' => '', 'desc' => ''];
+            }
+        }
+
+        // Remove a category row
+        if (!empty($_POST['kb_remove_cat'])) {
+            $remove_id = (string) (int) $_POST['kb_remove_cat'];
+            unset($templates[$remove_id]);
+        }
+
+        // Save template values for all configured rows
+        if (!empty($_POST['kb_filter_tpls']) && is_array($_POST['kb_filter_tpls'])) {
+            foreach ($_POST['kb_filter_tpls'] as $tid => $fields) {
+                $tid = (string) (int) $tid;
+                if (!isset($templates[$tid])) {
+                    continue;
+                }
+                $templates[$tid] = [
+                    'h1'    => sanitize_text_field(wp_unslash($fields['h1']    ?? '')),
+                    'title' => sanitize_text_field(wp_unslash($fields['title'] ?? '')),
+                    'desc'  => sanitize_textarea_field(wp_unslash($fields['desc'] ?? '')),
+                ];
+            }
+        }
+
+        update_option('kb_filter_templates', $templates);
+        $notice = 'success';
+    }
+
+    // All categories not yet in the list (for "add" dropdown)
+    $all_cats = get_terms(['taxonomy' => 'category', 'hide_empty' => false, 'orderby' => 'name']);
+    $all_cats = is_array($all_cats) ? $all_cats : [];
+    $available = array_filter($all_cats, static fn($c) => !isset($templates[(string) $c->term_id]));
+    ?>
+    <div class="wrap">
+        <h1><?php esc_html_e('SEO фильтров', 'kinobase'); ?></h1>
+        <p style="max-width:680px;color:#555;margin-bottom:1rem">
+            <?php esc_html_e(
+                'Здесь настраиваются H1, Title и Description для страниц с активным фильтром '
+                . '(например /category/films/2020/). Добавьте родительские рубрики-фильтры '
+                . '(«Год», «Качество» и т.д.) и задайте шаблон для каждой.',
+                'kinobase'
+            ); ?>
+        </p>
+        <?php echo kb_cat_vars_reference_html(true); ?>
+
+        <?php if ($notice === 'success') : ?>
+        <div class="notice notice-success is-dismissible" style="margin-top:1rem">
+            <p><?php esc_html_e('Шаблоны сохранены.', 'kinobase'); ?></p>
+        </div>
+        <?php endif; ?>
+
+        <form method="post" style="margin-top:1.5rem">
+            <?php wp_nonce_field($nonce_action, 'kb_filter_seo_nonce'); ?>
+
+            <?php if (!empty($templates)) : ?>
+
+            <div style="display:flex;flex-direction:column;gap:1rem;max-width:860px">
+                <?php foreach ($templates as $tid => $tpl) :
+                    $tid = (int) $tid;
+                    $cat = get_term($tid, 'category');
+                    if (!($cat instanceof WP_Term)) {
+                        continue;
+                    }
+                ?>
+                <div class="postbox" style="padding:1rem 1.5rem;margin:0">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
+                        <strong style="font-size:1rem"><?php echo esc_html($cat->name); ?></strong>
+                        <button type="submit" name="kb_remove_cat" value="<?php echo $tid; ?>"
+                                class="button button-small"
+                                onclick="return confirm('<?php esc_attr_e('Удалить?', 'kinobase'); ?>')">
+                            ✕ <?php esc_html_e('Удалить', 'kinobase'); ?>
+                        </button>
+                    </div>
+                    <table style="width:100%;border-collapse:collapse">
+                        <tr>
+                            <td style="width:110px;padding:4px 12px 4px 0;vertical-align:top;color:#555;font-size:.9em">
+                                <label for="kbf_h1_<?php echo $tid; ?>">H1</label>
+                            </td>
+                            <td style="padding:4px 0">
+                                <input type="text" id="kbf_h1_<?php echo $tid; ?>"
+                                       name="kb_filter_tpls[<?php echo $tid; ?>][h1]"
+                                       value="<?php echo esc_attr($tpl['h1'] ?? ''); ?>"
+                                       class="large-text" placeholder="<?php esc_attr_e('например: %название_рубрики% %фильтр% года', 'kinobase'); ?>">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:4px 12px 4px 0;vertical-align:top;color:#555;font-size:.9em">
+                                <label for="kbf_title_<?php echo $tid; ?>">Title</label>
+                            </td>
+                            <td style="padding:4px 0">
+                                <input type="text" id="kbf_title_<?php echo $tid; ?>"
+                                       name="kb_filter_tpls[<?php echo $tid; ?>][title]"
+                                       value="<?php echo esc_attr($tpl['title'] ?? ''); ?>"
+                                       class="large-text" placeholder="<?php esc_attr_e('например: %название_рубрики% %фильтр% — смотреть онлайн | %сайт%', 'kinobase'); ?>">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:4px 12px 4px 0;vertical-align:top;color:#555;font-size:.9em">
+                                <label for="kbf_desc_<?php echo $tid; ?>">Description</label>
+                            </td>
+                            <td style="padding:4px 0">
+                                <textarea id="kbf_desc_<?php echo $tid; ?>"
+                                          name="kb_filter_tpls[<?php echo $tid; ?>][desc]"
+                                          rows="2" class="large-text"
+                                          placeholder="<?php esc_attr_e('например: Смотрите %название_рубрики% %фильтр% онлайн на %сайт%.', 'kinobase'); ?>"><?php echo esc_textarea($tpl['desc'] ?? ''); ?></textarea>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <?php endforeach; ?>
+            </div>
+
+            <?php submit_button(__('Сохранить', 'kinobase'), 'primary', 'kb_save', false,
+                ['style' => 'margin-top:1rem']); ?>
+
+            <hr style="margin:1.5rem 0;max-width:860px">
+            <?php endif; ?>
+
+            <!-- Add category -->
+            <h2 style="font-size:1rem;margin-bottom:0.5rem">
+                <?php esc_html_e('Добавить рубрику', 'kinobase'); ?>
+            </h2>
+
+            <?php if (!empty($available)) : ?>
+            <div style="display:flex;align-items:center;gap:0.75rem">
+                <select name="kb_add_cat">
+                    <option value=""><?php esc_html_e('— выберите рубрику —', 'kinobase'); ?></option>
+                    <?php foreach ($available as $cat) : ?>
+                    <option value="<?php echo (int) $cat->term_id; ?>">
+                        <?php echo esc_html($cat->name); ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+                <button type="submit" name="kb_add_submit" class="button">
+                    + <?php esc_html_e('Добавить', 'kinobase'); ?>
+                </button>
+            </div>
+            <?php else : ?>
+            <p style="color:#888"><?php esc_html_e('Все рубрики уже добавлены.', 'kinobase'); ?></p>
+            <?php endif; ?>
+
+            <?php if (empty($templates)) : ?>
+            <?php submit_button(__('Сохранить', 'kinobase')); ?>
+            <?php endif; ?>
+        </form>
+    </div>
+    <?php
 }
 
 /**
