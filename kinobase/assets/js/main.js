@@ -893,4 +893,21 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    /* ============================================================
+       10. AUTH — password show/hide toggle
+       ============================================================ */
+    document.querySelectorAll('.auth-toggle-pw').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var targetId = btn.dataset.target;
+            var input    = targetId ? document.getElementById(targetId) : btn.previousElementSibling;
+            if (!input) return;
+            var isText   = input.type === 'text';
+            input.type   = isText ? 'password' : 'text';
+            var show     = btn.querySelector('.pw-icon-show');
+            var hide     = btn.querySelector('.pw-icon-hide');
+            if (show) show.style.display = isText ? '' : 'none';
+            if (hide) hide.style.display = isText ? 'none' : '';
+        });
+    });
+
 }); // end DOMContentLoaded
