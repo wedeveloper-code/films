@@ -137,7 +137,53 @@ function kinobase_movie_in_category_archives(WP_Query $q): void
 }
 
 /* ============================================================
-   3. Filter Bar Helpers
+   3. Clean filter URLs: /category/{cat}/{filter}/
+   Registers rewrite rules so filter slugs become path segments
+   instead of query params — no ?kb_filter= in the source HTML.
+   ============================================================ */
+
+add_filter('query_vars', 'kinobase_filter_query_vars');
+
+function kinobase_filter_query_vars(array $vars): array
+{
+    $vars[] = 'kb_filter';
+    return $vars;
+}
+
+add_action('init', 'kinobase_register_filter_rewrites', 6);
+
+function kinobase_register_filter_rewrites(): void
+{
+    $base = trim((string) get_option('category_base'), '/') ?: 'category';
+
+    // Pagination: /category/{cat}/{filter}/page/{n}/
+    add_rewrite_rule(
+        '^' . $base . '/([^/]+)/([^/]+)/page/([0-9]+)/?$',
+        'index.php?category_name=$matches[1]&kb_filter=$matches[2]&paged=$matches[3]',
+        'top'
+    );
+    // Base: /category/{cat}/{filter}/
+    add_rewrite_rule(
+        '^' . $base . '/([^/]+)/([^/]+)/?$',
+        'index.php?category_name=$matches[1]&kb_filter=$matches[2]',
+        'top'
+    );
+}
+
+// One-time flush after rules are registered (transient guard, runs once per month max)
+add_action('init', 'kinobase_maybe_flush_filter_rewrites', 99);
+
+function kinobase_maybe_flush_filter_rewrites(): void
+{
+    if (get_transient('kb_filter_rewrites_v1')) {
+        return;
+    }
+    flush_rewrite_rules(false);
+    set_transient('kb_filter_rewrites_v1', 1, MONTH_IN_SECONDS);
+}
+
+/* ============================================================
+   4. Filter Bar Helpers
    Used by archive.php and front-page.php to render
    the Год / Жанр / … filter UI from the WP nav menu
    "kinobase_filters" (manageable at wp-admin/nav-menus.php).
@@ -229,7 +275,7 @@ function kinobase_render_desktop_filter_bar(
     }
 
     $context_mode = ($context_term !== null);
-    $kb_filter    = $context_mode ? sanitize_key(wp_unslash($_GET['kb_filter'] ?? '')) : '';
+    $kb_filter    = $context_mode ? sanitize_key((string) get_query_var('kb_filter', '')) : '';
 
     if ($context_mode) {
         $has_active = ($kb_filter !== '');
@@ -274,7 +320,7 @@ function kinobase_render_desktop_filter_bar(
                         if ($context_mode) {
                             $kid_slug   = kinobase_menu_item_slug($kid);
                             $link_url   = $kid_slug !== ''
-                                ? add_query_arg('kb_filter', $kid_slug, get_term_link($context_term))
+                                ? rtrim((string) get_term_link($context_term), '/') . '/' . rawurlencode($kid_slug) . '/'
                                 : $kid->url;
                             $is_current = ($kid_slug !== '' && $kid_slug === $kb_filter);
                         } else {
@@ -435,7 +481,7 @@ function kinobase_apply_category_filter(WP_Query $q): void
         return;
     }
 
-    $slug = sanitize_key(wp_unslash($_GET['kb_filter'] ?? ''));
+    $slug = sanitize_key((string) $q->get('kb_filter'));
     if (!$slug) {
         return;
     }
@@ -445,7 +491,7 @@ function kinobase_apply_category_filter(WP_Query $q): void
         return;
     }
 
-    // Get the context category from the query var set by WP rewrite
+    // Get the context category from the query var set by the rewrite rule
     $cat_name = (string) $q->get('category_name');
     if (!$cat_name) {
         return;
@@ -459,7 +505,16 @@ function kinobase_apply_category_filter(WP_Query $q): void
         return;
     }
 
-    // Replace single-category constraint with an AND tax_query
+    // If the filter slug is a direct child of the context category, this is a
+    // legitimate hierarchical URL (e.g. /category/год/2020/).
+    // Resolve it as a normal child-category archive — no 301, no AND filter.
+    if ((int) $filter_term->parent === (int) $context_term->term_id) {
+        $q->set('category_name', $context_slug . '/' . $slug);
+        return;
+    }
+
+    // Cross-taxonomy filter: show posts in BOTH categories
+    // e.g. /category/series/2020/ → Сериалы AND 2020
     $q->set('category_name', '');
     $q->set('tax_query', [
         'relation' => 'AND',
