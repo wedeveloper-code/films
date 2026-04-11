@@ -195,23 +195,48 @@ function kinobase_filter_menu_has_active(array $data, string $active_url): bool
 }
 
 /**
+ * Get the taxonomy slug for a nav menu item.
+ * Falls back to extracting the last path segment from the item URL.
+ */
+function kinobase_menu_item_slug(object $item): string
+{
+    if (!empty($item->object_id) && !empty($item->object)) {
+        $term = get_term((int) $item->object_id, $item->object);
+        if ($term && !is_wp_error($term)) {
+            return $term->slug;
+        }
+    }
+    return basename(rtrim($item->url, '/'));
+}
+
+/**
  * Render desktop filter bar from the "kinobase_filters" nav menu.
  * Each top-level item = dropdown button; children = filter links.
  *
- * @param string $active_url  URL of the currently active filter (to highlight it).
- * @param string $reset_url   URL for the "× Сбросить" link (omit to hide reset).
+ * @param string       $active_url   URL of the currently active filter (non-context mode).
+ * @param string       $reset_url    URL for the "× Сбросить" link (non-context mode).
+ * @param WP_Term|null $context_term When set, generates ?kb_filter=slug links relative to
+ *                                   this category so filters combine with the current archive.
  */
 function kinobase_render_desktop_filter_bar(
-    string $active_url = '',
-    string $reset_url  = ''
+    string   $active_url   = '',
+    string   $reset_url    = '',
+    ?WP_Term $context_term = null
 ): void {
     $data = kinobase_get_filter_menu_data('kinobase_filters');
     if (!$data) {
         return; // menu not configured yet
     }
 
-    $active_url = rtrim($active_url, '/');
-    $has_active = kinobase_filter_menu_has_active($data, $active_url);
+    $context_mode = ($context_term !== null);
+    $kb_filter    = $context_mode ? sanitize_key(wp_unslash($_GET['kb_filter'] ?? '')) : '';
+
+    if ($context_mode) {
+        $has_active = ($kb_filter !== '');
+    } else {
+        $active_url = rtrim($active_url, '/');
+        $has_active = kinobase_filter_menu_has_active($data, $active_url);
+    }
 
     foreach ($data['roots'] as $parent) {
         $kids = $data['children'][$parent->ID] ?? [];
@@ -221,9 +246,16 @@ function kinobase_render_desktop_filter_bar(
 
         $group_active = false;
         foreach ($kids as $kid) {
-            if (rtrim($kid->url, '/') === $active_url) {
-                $group_active = true;
-                break;
+            if ($context_mode) {
+                if (kinobase_menu_item_slug($kid) === $kb_filter && $kb_filter !== '') {
+                    $group_active = true;
+                    break;
+                }
+            } else {
+                if (rtrim($kid->url, '/') === $active_url) {
+                    $group_active = true;
+                    break;
+                }
             }
         }
 
@@ -239,10 +271,19 @@ function kinobase_render_desktop_filter_bar(
             <div class="filter-bar-drop" id="<?php echo esc_attr($uid); ?>">
                 <ul>
                     <?php foreach ($kids as $kid) :
-                        $is_current = (rtrim($kid->url, '/') === $active_url);
+                        if ($context_mode) {
+                            $kid_slug   = kinobase_menu_item_slug($kid);
+                            $link_url   = $kid_slug !== ''
+                                ? add_query_arg('kb_filter', $kid_slug, get_term_link($context_term))
+                                : $kid->url;
+                            $is_current = ($kid_slug !== '' && $kid_slug === $kb_filter);
+                        } else {
+                            $link_url   = $kid->url;
+                            $is_current = (rtrim($kid->url, '/') === $active_url);
+                        }
                     ?>
                     <li>
-                        <a href="<?php echo esc_url($kid->url); ?>"
+                        <a href="<?php echo esc_url($link_url); ?>"
                            class="<?php echo $is_current ? 'active' : ''; ?>">
                             <?php echo esc_html($kid->title); ?>
                             <?php if ($is_current) : ?><span>✓</span><?php endif; ?>
@@ -255,7 +296,12 @@ function kinobase_render_desktop_filter_bar(
         <?php
     }
 
-    if ($has_active && $reset_url) {
+    if ($context_mode) {
+        if ($kb_filter) {
+            echo '<a href="' . esc_url(get_term_link($context_term)) . '" class="filter-bar-reset">× '
+                . esc_html__('Сбросить', 'kinobase') . '</a>';
+        }
+    } elseif ($has_active && $reset_url) {
         echo '<a href="' . esc_url($reset_url) . '" class="filter-bar-reset">× '
             . esc_html__('Сбросить', 'kinobase') . '</a>';
     }
@@ -370,4 +416,54 @@ function kinobase_render_mobile_filter_panel(
         </div><!-- /.filter-panel -->
     </div><!-- /.filter-panel-wrap -->
     <?php
+}
+
+/* ============================================================
+   Apply ?kb_filter=SLUG to category archive main query
+   Combines the current category with the filter category via
+   an AND tax_query so users see e.g. "series from 2020".
+   ============================================================ */
+
+add_action('pre_get_posts', 'kinobase_apply_category_filter', 15);
+
+function kinobase_apply_category_filter(WP_Query $q): void
+{
+    if (is_admin() || !$q->is_main_query()) {
+        return;
+    }
+    if (!$q->is_category()) {
+        return;
+    }
+
+    $slug = sanitize_key(wp_unslash($_GET['kb_filter'] ?? ''));
+    if (!$slug) {
+        return;
+    }
+
+    $filter_term = get_category_by_slug($slug);
+    if (!$filter_term) {
+        return;
+    }
+
+    // Get the context category from the query var set by WP rewrite
+    $cat_name = (string) $q->get('category_name');
+    if (!$cat_name) {
+        return;
+    }
+
+    // Handle hierarchical slugs like "parent/child" — use the last segment
+    $parts        = explode('/', trim($cat_name, '/'));
+    $context_slug = (string) end($parts);
+    $context_term = get_category_by_slug($context_slug);
+    if (!$context_term) {
+        return;
+    }
+
+    // Replace single-category constraint with an AND tax_query
+    $q->set('category_name', '');
+    $q->set('tax_query', [
+        'relation' => 'AND',
+        ['taxonomy' => 'category', 'field' => 'term_id', 'terms' => [(int) $context_term->term_id]],
+        ['taxonomy' => 'category', 'field' => 'term_id', 'terms' => [(int) $filter_term->term_id]],
+    ]);
 }

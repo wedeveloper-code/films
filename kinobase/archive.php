@@ -90,7 +90,7 @@ if ($is_cat) {
             <?php if ($has_filter_menu) : ?>
             <!-- Filter bar — Год / Жанр / Качество -->
             <div class="filter-bar">
-                <?php kinobase_render_desktop_filter_bar($active_url, $reset_url); ?>
+                <?php kinobase_render_desktop_filter_bar($active_url, $reset_url, $is_cat ? $queried : null); ?>
             </div><!-- .filter-bar -->
             <?php endif; ?>
 
