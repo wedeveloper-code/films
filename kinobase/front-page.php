@@ -100,6 +100,7 @@ if ($year_parent) {
                     'orderby'                 => 'date',
                     'order'                   => 'DESC',
                     'update_post_term_cache'  => false,
+                    'kb_rotate'               => true,
                 ];
 
                 if ($year_term) {

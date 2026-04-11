@@ -28,3 +28,4 @@ require_once KINOBASE_DIR . '/inc/ajax-handlers.php';
 require_once KINOBASE_DIR . '/inc/field-builder.php';
 require_once KINOBASE_DIR . '/inc/category-meta.php';
 require_once KINOBASE_DIR . '/inc/auth.php';
+require_once KINOBASE_DIR . '/inc/rotation.php';
