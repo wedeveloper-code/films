@@ -22,6 +22,16 @@ if (!defined('ABSPATH')) {
    ============================================================ */
 
 add_action('after_switch_theme', 'kb_auth_create_pages');
+add_action('init', 'kb_auth_create_pages_once');
+
+function kb_auth_create_pages_once(): void
+{
+    if (get_transient('kb_auth_pages_ok')) {
+        return;
+    }
+    kb_auth_create_pages();
+    set_transient('kb_auth_pages_ok', 1, WEEK_IN_SECONDS);
+}
 
 function kb_auth_create_pages(): void
 {
@@ -60,32 +70,8 @@ function kb_filter_login_url(string $url, string $redirect = ''): string
 
 add_filter('register_url', static fn(): string => home_url('/register/'));
 
-// Redirect wp-login.php → custom pages (keep password-reset flow on WP default)
-add_action('login_init', 'kb_redirect_wp_login_php');
-
-function kb_redirect_wp_login_php(): void
-{
-    $action = sanitize_key($_GET['action'] ?? '');
-
-    // Keep WP defaults for password-reset flows
-    if (in_array($action, ['lostpassword', 'rp', 'resetpass', 'postpass', 'logout'], true)) {
-        return;
-    }
-
-    if ($action === 'register') {
-        wp_safe_redirect(home_url('/register/'));
-        exit;
-    }
-
-    // Default: redirect to custom login page
-    $redirect = isset($_GET['redirect_to']) ? rawurlencode(esc_url_raw(wp_unslash($_GET['redirect_to']))) : '';
-    $url      = home_url('/login/');
-    if ($redirect) {
-        $url = add_query_arg('redirect_to', $redirect, $url);
-    }
-    wp_safe_redirect($url);
-    exit;
-}
+// NOTE: wp-login.php remains accessible directly (for admin safety).
+// Custom /login/ page is used via filtered login_url in theme links.
 
 /* ============================================================
    Redirect already-logged-in users away from auth pages
