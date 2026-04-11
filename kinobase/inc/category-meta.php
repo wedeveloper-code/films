@@ -336,30 +336,65 @@ function kb_cat_seo_settings_page(): void
    ============================================================ */
 
 /**
- * Returns the filter-page template for the given field ('h1', 'title', 'desc').
- * Looks up the kb_filter_templates option by the filter term's parent category.
+ * Finds the most specific combination rule whose category set is a subset
+ * of the currently active categories (queried object + kb_filter term).
+ * "Most specific" = rule with the most categories.
  *
- * @param WP_Term $filter_term Active filter term (e.g. "2020", "HD").
- * @param string  $field       'h1' | 'title' | 'desc'
+ * @return array{cats:int[],h1:string,title:string,desc:string}|null
  */
-function kb_get_filter_tpl(WP_Term $filter_term, string $field): string
+function kb_find_filter_combination(): ?array
 {
-    if (!$filter_term->parent) {
-        return '';
+    $combinations = (array) get_option('kb_filter_combinations', []);
+    if (empty($combinations)) {
+        return null;
     }
-    $templates = (array) get_option('kb_filter_templates', []);
-    $parent_id = (string) $filter_term->parent;
-    return (string) ($templates[$parent_id][$field] ?? '');
+
+    // Collect active term IDs
+    $active = [];
+    $queried = get_queried_object();
+    if ($queried instanceof WP_Term) {
+        $active[$queried->term_id] = true;
+    }
+    $filter_term = kb_get_active_filter_term();
+    if ($filter_term) {
+        $active[$filter_term->term_id] = true;
+    }
+    if (empty($active)) {
+        return null;
+    }
+
+    $best       = null;
+    $best_count = 0;
+
+    foreach ($combinations as $rule) {
+        $rule_cats = array_map('intval', (array) ($rule['cats'] ?? []));
+        if (empty($rule_cats)) {
+            continue;
+        }
+        // Every cat in the rule must be active on this page
+        foreach ($rule_cats as $cat_id) {
+            if (!isset($active[$cat_id])) {
+                continue 2;
+            }
+        }
+        // Most specific match (most cats) wins
+        if (count($rule_cats) > $best_count) {
+            $best       = $rule;
+            $best_count = count($rule_cats);
+        }
+    }
+
+    return $best;
 }
 
 function kb_cat_h1(WP_Term $term, ?WP_Term $filter_term = null): string
 {
     if ($filter_term) {
-        $tpl = kb_get_filter_tpl($filter_term, 'h1');
-        if ($tpl) {
-            return kb_replace_cat_vars($tpl, $term, $filter_term);
+        $combo = kb_find_filter_combination();
+        if ($combo && !empty($combo['h1'])) {
+            return kb_replace_cat_vars($combo['h1'], $term, $filter_term);
         }
-        // Nothing configured — generic fallback
+        // No rule configured — generic fallback
         return $term->name . ' ' . $filter_term->name;
     }
 
@@ -393,11 +428,10 @@ function kb_cat_seo_title(string $title): string
     // Filter page: /category/films/2020/
     $filter_term = kb_get_active_filter_term();
     if ($filter_term) {
-        $tpl = kb_get_filter_tpl($filter_term, 'title');
-        if ($tpl) {
-            return kb_replace_cat_vars($tpl, $term, $filter_term);
+        $combo = kb_find_filter_combination();
+        if ($combo && !empty($combo['title'])) {
+            return kb_replace_cat_vars($combo['title'], $term, $filter_term);
         }
-        // No template — basic fallback
         return $term->name . ' ' . $filter_term->name . ' — ' . get_bloginfo('name');
     }
 
@@ -428,12 +462,12 @@ function kb_cat_seo_description(): void
     // Filter page: /category/films/2020/
     $filter_term = kb_get_active_filter_term();
     if ($filter_term) {
-        $tpl = kb_get_filter_tpl($filter_term, 'desc');
-        if ($tpl) {
-            $desc = kb_replace_cat_vars($tpl, $term, $filter_term);
+        $combo = kb_find_filter_combination();
+        if ($combo && !empty($combo['desc'])) {
+            $desc = kb_replace_cat_vars($combo['desc'], $term, $filter_term);
             echo '<meta name="description" content="' . esc_attr($desc) . '">' . "\n";
         }
-        return; // don't fall through to regular description on filter pages
+        return;
     }
 
     $custom = (string) get_term_meta($term->term_id, '_kb_cat_seo_desc', true);
@@ -474,59 +508,73 @@ function kb_filter_seo_settings_page(): void
     }
 
     $nonce_action = 'kb_filter_seo_save';
-    $templates    = (array) get_option('kb_filter_templates', []);
+    $combinations = (array) get_option('kb_filter_combinations', []);
     $notice       = '';
 
-    // Handle form submission
+    // ---- handle POST ----
     if (
         isset($_POST['kb_filter_seo_nonce']) &&
         wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['kb_filter_seo_nonce'])), $nonce_action)
     ) {
-        // Add new category
-        if (!empty($_POST['kb_add_cat'])) {
-            $add_id = (string) (int) $_POST['kb_add_cat'];
-            if ($add_id !== '0' && !isset($templates[$add_id])) {
-                $templates[$add_id] = ['h1' => '', 'title' => '', 'desc' => ''];
-            }
-        }
-
-        // Remove a category row
-        if (!empty($_POST['kb_remove_cat'])) {
-            $remove_id = (string) (int) $_POST['kb_remove_cat'];
-            unset($templates[$remove_id]);
-        }
-
-        // Save template values for all configured rows
-        if (!empty($_POST['kb_filter_tpls']) && is_array($_POST['kb_filter_tpls'])) {
-            foreach ($_POST['kb_filter_tpls'] as $tid => $fields) {
-                $tid = (string) (int) $tid;
-                if (!isset($templates[$tid])) {
-                    continue;
-                }
-                $templates[$tid] = [
-                    'h1'    => sanitize_text_field(wp_unslash($fields['h1']    ?? '')),
-                    'title' => sanitize_text_field(wp_unslash($fields['title'] ?? '')),
-                    'desc'  => sanitize_textarea_field(wp_unslash($fields['desc'] ?? '')),
+        // Add new rule
+        if (isset($_POST['kb_new_cats']) && is_array($_POST['kb_new_cats'])) {
+            $new_cats = array_unique(array_map('intval', $_POST['kb_new_cats']));
+            sort($new_cats);
+            if (count($new_cats) >= 1) {
+                $key              = implode(',', $new_cats);
+                $combinations[$key] = [
+                    'cats'  => $new_cats,
+                    'h1'    => sanitize_text_field(wp_unslash($_POST['kb_new_h1']    ?? '')),
+                    'title' => sanitize_text_field(wp_unslash($_POST['kb_new_title'] ?? '')),
+                    'desc'  => sanitize_textarea_field(wp_unslash($_POST['kb_new_desc'] ?? '')),
                 ];
             }
         }
 
-        update_option('kb_filter_templates', $templates);
+        // Remove a rule
+        if (!empty($_POST['kb_remove_combo'])) {
+            $rk = sanitize_text_field(wp_unslash($_POST['kb_remove_combo']));
+            unset($combinations[$rk]);
+        }
+
+        // Save edits to existing rules
+        if (!empty($_POST['kb_combos']) && is_array($_POST['kb_combos'])) {
+            foreach ($_POST['kb_combos'] as $key => $fields) {
+                $key = sanitize_text_field(wp_unslash($key));
+                if (!isset($combinations[$key])) {
+                    continue;
+                }
+                $combinations[$key]['h1']    = sanitize_text_field(wp_unslash($fields['h1']    ?? ''));
+                $combinations[$key]['title'] = sanitize_text_field(wp_unslash($fields['title'] ?? ''));
+                $combinations[$key]['desc']  = sanitize_textarea_field(wp_unslash($fields['desc'] ?? ''));
+            }
+        }
+
+        update_option('kb_filter_combinations', $combinations);
         $notice = 'success';
     }
 
-    // All categories not yet in the list (for "add" dropdown)
-    $all_cats = get_terms(['taxonomy' => 'category', 'hide_empty' => false, 'orderby' => 'name']);
+    // ---- build category tree for the checkboxes ----
+    $all_cats = get_terms(['taxonomy' => 'category', 'hide_empty' => false]);
     $all_cats = is_array($all_cats) ? $all_cats : [];
-    $available = array_filter($all_cats, static fn($c) => !isset($templates[(string) $c->term_id]));
+
+    $top_level = [];
+    $children  = [];
+    foreach ($all_cats as $cat) {
+        if ((int) $cat->parent === 0) {
+            $top_level[] = $cat;
+        } else {
+            $children[(int) $cat->parent][] = $cat;
+        }
+    }
     ?>
     <div class="wrap">
         <h1><?php esc_html_e('SEO фильтров', 'kinobase'); ?></h1>
         <p style="max-width:680px;color:#555;margin-bottom:1rem">
             <?php esc_html_e(
-                'Здесь настраиваются H1, Title и Description для страниц с активным фильтром '
-                . '(например /category/films/2020/). Добавьте родительские рубрики-фильтры '
-                . '(«Год», «Качество» и т.д.) и задайте шаблон для каждой.',
+                'Задайте уникальные H1, Title и Description для конкретных комбинаций рубрик. '
+                . 'Если активные рубрики страницы содержат все рубрики правила — правило применяется. '
+                . 'При нескольких совпадениях побеждает наиболее точное (с наибольшим числом рубрик).',
                 'kinobase'
             ); ?>
         </p>
@@ -534,103 +582,144 @@ function kb_filter_seo_settings_page(): void
 
         <?php if ($notice === 'success') : ?>
         <div class="notice notice-success is-dismissible" style="margin-top:1rem">
-            <p><?php esc_html_e('Шаблоны сохранены.', 'kinobase'); ?></p>
+            <p><?php esc_html_e('Сохранено.', 'kinobase'); ?></p>
         </div>
         <?php endif; ?>
 
         <form method="post" style="margin-top:1.5rem">
             <?php wp_nonce_field($nonce_action, 'kb_filter_seo_nonce'); ?>
 
-            <?php if (!empty($templates)) : ?>
-
+            <?php /* ---- existing rules list ---- */ ?>
+            <?php if (!empty($combinations)) : ?>
+            <h2 style="font-size:1rem;margin-bottom:0.75rem">
+                <?php esc_html_e('Правила', 'kinobase'); ?>
+            </h2>
             <div style="display:flex;flex-direction:column;gap:1rem;max-width:860px">
-                <?php foreach ($templates as $tid => $tpl) :
-                    $tid = (int) $tid;
-                    $cat = get_term($tid, 'category');
-                    if (!($cat instanceof WP_Term)) {
-                        continue;
+                <?php foreach ($combinations as $key => $rule) :
+                    $rule_cats = array_map('intval', (array) ($rule['cats'] ?? []));
+                    $cat_labels = [];
+                    foreach ($rule_cats as $cat_id) {
+                        $c = get_term($cat_id, 'category');
+                        if ($c instanceof WP_Term) {
+                            $cat_labels[] = $c->name;
+                        }
                     }
                 ?>
                 <div class="postbox" style="padding:1rem 1.5rem;margin:0">
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
-                        <strong style="font-size:1rem"><?php echo esc_html($cat->name); ?></strong>
-                        <button type="submit" name="kb_remove_cat" value="<?php echo $tid; ?>"
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:0.75rem">
+                        <div style="display:flex;flex-wrap:wrap;gap:0.35rem;flex:1">
+                            <?php foreach ($cat_labels as $lbl) : ?>
+                            <span style="background:#0073aa;color:#fff;padding:2px 10px;border-radius:3px;font-size:.85em">
+                                <?php echo esc_html($lbl); ?>
+                            </span>
+                            <?php endforeach; ?>
+                        </div>
+                        <button type="submit" name="kb_remove_combo" value="<?php echo esc_attr($key); ?>"
                                 class="button button-small"
-                                onclick="return confirm('<?php esc_attr_e('Удалить?', 'kinobase'); ?>')">
-                            ✕ <?php esc_html_e('Удалить', 'kinobase'); ?>
+                                onclick="return confirm('<?php esc_attr_e('Удалить правило?', 'kinobase'); ?>')">
+                            ✕
                         </button>
                     </div>
                     <table style="width:100%;border-collapse:collapse">
+                        <?php foreach (['h1' => 'H1', 'title' => 'Title', 'desc' => 'Description'] as $f => $lbl) : ?>
                         <tr>
-                            <td style="width:110px;padding:4px 12px 4px 0;vertical-align:top;color:#555;font-size:.9em">
-                                <label for="kbf_h1_<?php echo $tid; ?>">H1</label>
+                            <td style="width:100px;padding:4px 10px 4px 0;vertical-align:top;color:#555;font-size:.9em">
+                                <?php echo esc_html($lbl); ?>
                             </td>
                             <td style="padding:4px 0">
-                                <input type="text" id="kbf_h1_<?php echo $tid; ?>"
-                                       name="kb_filter_tpls[<?php echo $tid; ?>][h1]"
-                                       value="<?php echo esc_attr($tpl['h1'] ?? ''); ?>"
-                                       class="large-text" placeholder="<?php esc_attr_e('например: %название_рубрики% %фильтр% года', 'kinobase'); ?>">
+                                <?php if ($f === 'desc') : ?>
+                                <textarea name="kb_combos[<?php echo esc_attr($key); ?>][desc]"
+                                          rows="2" class="large-text"><?php echo esc_textarea($rule['desc'] ?? ''); ?></textarea>
+                                <?php else : ?>
+                                <input type="text"
+                                       name="kb_combos[<?php echo esc_attr($key); ?>][<?php echo esc_attr($f); ?>]"
+                                       value="<?php echo esc_attr($rule[$f] ?? ''); ?>"
+                                       class="large-text">
+                                <?php endif; ?>
                             </td>
                         </tr>
-                        <tr>
-                            <td style="padding:4px 12px 4px 0;vertical-align:top;color:#555;font-size:.9em">
-                                <label for="kbf_title_<?php echo $tid; ?>">Title</label>
-                            </td>
-                            <td style="padding:4px 0">
-                                <input type="text" id="kbf_title_<?php echo $tid; ?>"
-                                       name="kb_filter_tpls[<?php echo $tid; ?>][title]"
-                                       value="<?php echo esc_attr($tpl['title'] ?? ''); ?>"
-                                       class="large-text" placeholder="<?php esc_attr_e('например: %название_рубрики% %фильтр% — смотреть онлайн | %сайт%', 'kinobase'); ?>">
-                            </td>
-                        </tr>
-                        <tr>
-                            <td style="padding:4px 12px 4px 0;vertical-align:top;color:#555;font-size:.9em">
-                                <label for="kbf_desc_<?php echo $tid; ?>">Description</label>
-                            </td>
-                            <td style="padding:4px 0">
-                                <textarea id="kbf_desc_<?php echo $tid; ?>"
-                                          name="kb_filter_tpls[<?php echo $tid; ?>][desc]"
-                                          rows="2" class="large-text"
-                                          placeholder="<?php esc_attr_e('например: Смотрите %название_рубрики% %фильтр% онлайн на %сайт%.', 'kinobase'); ?>"><?php echo esc_textarea($tpl['desc'] ?? ''); ?></textarea>
-                            </td>
-                        </tr>
+                        <?php endforeach; ?>
                     </table>
                 </div>
                 <?php endforeach; ?>
             </div>
-
-            <?php submit_button(__('Сохранить', 'kinobase'), 'primary', 'kb_save', false,
+            <?php submit_button(__('Сохранить изменения', 'kinobase'), 'primary', 'kb_save', false,
                 ['style' => 'margin-top:1rem']); ?>
-
-            <hr style="margin:1.5rem 0;max-width:860px">
+            <hr style="margin:2rem 0;max-width:860px">
             <?php endif; ?>
 
-            <!-- Add category -->
-            <h2 style="font-size:1rem;margin-bottom:0.5rem">
-                <?php esc_html_e('Добавить рубрику', 'kinobase'); ?>
+            <?php /* ---- add new rule ---- */ ?>
+            <h2 style="font-size:1rem;margin-bottom:0.75rem">
+                <?php esc_html_e('Новое правило', 'kinobase'); ?>
             </h2>
+            <div style="max-width:860px;border:1px solid #ddd;border-radius:4px;padding:1.25rem 1.5rem;background:#fafafa">
+                <p style="margin:0 0 1rem;color:#555;font-size:.9em">
+                    <?php esc_html_e('Отметьте рубрики, составляющие комбинацию:', 'kinobase'); ?>
+                </p>
 
-            <?php if (!empty($available)) : ?>
-            <div style="display:flex;align-items:center;gap:0.75rem">
-                <select name="kb_add_cat">
-                    <option value=""><?php esc_html_e('— выберите рубрику —', 'kinobase'); ?></option>
-                    <?php foreach ($available as $cat) : ?>
-                    <option value="<?php echo (int) $cat->term_id; ?>">
-                        <?php echo esc_html($cat->name); ?>
-                    </option>
+                <div style="display:flex;flex-wrap:wrap;gap:2rem;margin-bottom:1.25rem">
+                    <?php if (!empty($top_level)) : ?>
+                    <div>
+                        <div style="font-size:.75em;text-transform:uppercase;letter-spacing:.06em;color:#888;margin-bottom:0.5rem">
+                            <?php esc_html_e('Разделы', 'kinobase'); ?>
+                        </div>
+                        <?php foreach ($top_level as $cat) : ?>
+                        <label style="display:block;margin-bottom:0.35rem;cursor:pointer">
+                            <input type="checkbox" name="kb_new_cats[]"
+                                   value="<?php echo (int) $cat->term_id; ?>">
+                            <?php echo esc_html($cat->name); ?>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php foreach ($top_level as $parent) :
+                        $kids = $children[(int) $parent->term_id] ?? [];
+                        if (empty($kids)) continue;
+                    ?>
+                    <div>
+                        <div style="font-size:.75em;text-transform:uppercase;letter-spacing:.06em;color:#888;margin-bottom:0.5rem">
+                            <?php echo esc_html($parent->name); ?>
+                        </div>
+                        <?php foreach ($kids as $cat) : ?>
+                        <label style="display:block;margin-bottom:0.35rem;cursor:pointer">
+                            <input type="checkbox" name="kb_new_cats[]"
+                                   value="<?php echo (int) $cat->term_id; ?>">
+                            <?php echo esc_html($cat->name); ?>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
                     <?php endforeach; ?>
-                </select>
-                <button type="submit" name="kb_add_submit" class="button">
-                    + <?php esc_html_e('Добавить', 'kinobase'); ?>
+                </div>
+
+                <table style="width:100%;border-collapse:collapse;margin-bottom:1rem">
+                    <tr>
+                        <td style="width:100px;padding:4px 10px 4px 0;vertical-align:top;color:#555;font-size:.9em">H1</td>
+                        <td style="padding:4px 0">
+                            <input type="text" name="kb_new_h1" class="large-text"
+                                   placeholder="<?php esc_attr_e('например: %название_рубрики% %фильтр% года', 'kinobase'); ?>">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:4px 10px 4px 0;vertical-align:top;color:#555;font-size:.9em">Title</td>
+                        <td style="padding:4px 0">
+                            <input type="text" name="kb_new_title" class="large-text"
+                                   placeholder="<?php esc_attr_e('например: %название_рубрики% %фильтр% | %сайт%', 'kinobase'); ?>">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:4px 10px 4px 0;vertical-align:top;color:#555;font-size:.9em">Description</td>
+                        <td style="padding:4px 0">
+                            <textarea name="kb_new_desc" rows="2" class="large-text"
+                                      placeholder="<?php esc_attr_e('Описание для этой комбинации рубрик', 'kinobase'); ?>"></textarea>
+                        </td>
+                    </tr>
+                </table>
+
+                <button type="submit" name="kb_add_submit" class="button button-primary">
+                    + <?php esc_html_e('Добавить правило', 'kinobase'); ?>
                 </button>
             </div>
-            <?php else : ?>
-            <p style="color:#888"><?php esc_html_e('Все рубрики уже добавлены.', 'kinobase'); ?></p>
-            <?php endif; ?>
-
-            <?php if (empty($templates)) : ?>
-            <?php submit_button(__('Сохранить', 'kinobase')); ?>
-            <?php endif; ?>
         </form>
     </div>
     <?php
