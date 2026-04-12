@@ -349,15 +349,14 @@ function kb_find_filter_combination(): ?array
         return null;
     }
 
-    // Collect active term IDs
-    $active = [];
+    // Collect active term IDs: queried object (base category) + all filter terms
+    $active  = [];
     $queried = get_queried_object();
     if ($queried instanceof WP_Term) {
         $active[$queried->term_id] = true;
     }
-    $filter_term = kb_get_active_filter_term();
-    if ($filter_term) {
-        $active[$filter_term->term_id] = true;
+    foreach (kb_get_active_filter_terms() as $ft) {
+        $active[$ft->term_id] = true;
     }
     if (empty($active)) {
         return null;
@@ -387,15 +386,21 @@ function kb_find_filter_combination(): ?array
     return $best;
 }
 
-function kb_cat_h1(WP_Term $term, ?WP_Term $filter_term = null): string
+/**
+ * @param WP_Term   $term         The queried (base) category.
+ * @param WP_Term[] $filter_terms Active filter terms (may be empty).
+ */
+function kb_cat_h1(WP_Term $term, array $filter_terms = []): string
 {
-    if ($filter_term) {
+    if (!empty($filter_terms)) {
         $combo = kb_find_filter_combination();
         if ($combo && !empty($combo['h1'])) {
-            return kb_replace_cat_vars($combo['h1'], $term, $filter_term);
+            // %фильтр% resolves to first filter term name
+            return kb_replace_cat_vars($combo['h1'], $term, $filter_terms[0]);
         }
-        // No rule configured — generic fallback
-        return $term->name . ' ' . $filter_term->name;
+        // No rule — join all filter names as generic fallback
+        $names = implode(' ', array_map(static fn($t) => $t->name, $filter_terms));
+        return $term->name . ' ' . $names;
     }
 
     $custom = (string) get_term_meta($term->term_id, '_kb_cat_h1', true);
@@ -425,14 +430,15 @@ function kb_cat_seo_title(string $title): string
         return $title;
     }
 
-    // Filter page: /category/films/2020/
-    $filter_term = kb_get_active_filter_term();
-    if ($filter_term) {
+    // Filter page: /category/films/2020/action/
+    $filter_terms = kb_get_active_filter_terms();
+    if (!empty($filter_terms)) {
         $combo = kb_find_filter_combination();
         if ($combo && !empty($combo['title'])) {
-            return kb_replace_cat_vars($combo['title'], $term, $filter_term);
+            return kb_replace_cat_vars($combo['title'], $term, $filter_terms[0]);
         }
-        return $term->name . ' ' . $filter_term->name . ' — ' . get_bloginfo('name');
+        $names = implode(' ', array_map(static fn($t) => $t->name, $filter_terms));
+        return $term->name . ' ' . $names . ' — ' . get_bloginfo('name');
     }
 
     // Per-category override takes priority over global template
@@ -459,12 +465,12 @@ function kb_cat_seo_description(): void
         return;
     }
 
-    // Filter page: /category/films/2020/
-    $filter_term = kb_get_active_filter_term();
-    if ($filter_term) {
+    // Filter page: /category/films/2020/action/
+    $filter_terms = kb_get_active_filter_terms();
+    if (!empty($filter_terms)) {
         $combo = kb_find_filter_combination();
         if ($combo && !empty($combo['desc'])) {
-            $desc = kb_replace_cat_vars($combo['desc'], $term, $filter_term);
+            $desc = kb_replace_cat_vars($combo['desc'], $term, $filter_terms[0]);
             echo '<meta name="description" content="' . esc_attr($desc) . '">' . "\n";
         }
         return;
@@ -726,15 +732,37 @@ function kb_filter_seo_settings_page(): void
 }
 
 /**
- * Returns the active filter WP_Term when on a filtered category page
- * (e.g. /category/films/2020/), or null when no filter is active.
+ * Returns all active filter WP_Terms for the current filtered category page
+ * (e.g. /category/films/2020/action/ → [WP_Term(2020), WP_Term(action)]).
+ * Returns empty array when no filters are active.
+ *
+ * @return WP_Term[]
+ */
+function kb_get_active_filter_terms(): array
+{
+    $filter_path = sanitize_text_field((string) get_query_var('kb_filter_path', ''));
+    if (!$filter_path) {
+        return [];
+    }
+    $slugs = array_values(array_filter(
+        array_map('sanitize_key', explode('/', trim($filter_path, '/')))
+    ));
+    $terms = [];
+    foreach ($slugs as $slug) {
+        $term = get_category_by_slug($slug);
+        if ($term instanceof WP_Term) {
+            $terms[] = $term;
+        }
+    }
+    return $terms;
+}
+
+/**
+ * Returns the first active filter WP_Term, or null when no filter is active.
+ * For multi-filter pages use kb_get_active_filter_terms().
  */
 function kb_get_active_filter_term(): ?WP_Term
 {
-    $slug = sanitize_key((string) get_query_var('kb_filter', ''));
-    if (!$slug) {
-        return null;
-    }
-    $term = get_category_by_slug($slug);
-    return ($term instanceof WP_Term) ? $term : null;
+    $terms = kb_get_active_filter_terms();
+    return $terms[0] ?? null;
 }

@@ -146,7 +146,7 @@ add_filter('query_vars', 'kinobase_filter_query_vars');
 
 function kinobase_filter_query_vars(array $vars): array
 {
-    $vars[] = 'kb_filter';
+    $vars[] = 'kb_filter_path'; // captures multi-segment filter path, e.g. "2020/action"
     return $vars;
 }
 
@@ -156,16 +156,17 @@ function kinobase_register_filter_rewrites(): void
 {
     $base = trim((string) get_option('category_base'), '/') ?: 'category';
 
-    // Pagination: /category/{cat}/{filter}/page/{n}/
+    // Pagination first: /category/{cat}/{filter_path}/page/{n}/
+    // (.+) is greedy and backtracks to find the literal /page/ separator
     add_rewrite_rule(
-        '^' . $base . '/([^/]+)/([^/]+)/page/([0-9]+)/?$',
-        'index.php?category_name=$matches[1]&kb_filter=$matches[2]&paged=$matches[3]',
+        '^' . $base . '/([^/]+)/(.+)/page/([0-9]+)/?$',
+        'index.php?category_name=$matches[1]&kb_filter_path=$matches[2]&paged=$matches[3]',
         'top'
     );
-    // Base: /category/{cat}/{filter}/
+    // Base: /category/{cat}/{filter_path}/  (one or more filter segments)
     add_rewrite_rule(
-        '^' . $base . '/([^/]+)/([^/]+)/?$',
-        'index.php?category_name=$matches[1]&kb_filter=$matches[2]',
+        '^' . $base . '/([^/]+)/(.+?)/?$',
+        'index.php?category_name=$matches[1]&kb_filter_path=$matches[2]',
         'top'
     );
 }
@@ -175,11 +176,11 @@ add_action('init', 'kinobase_maybe_flush_filter_rewrites', 99);
 
 function kinobase_maybe_flush_filter_rewrites(): void
 {
-    if (get_transient('kb_filter_rewrites_v1')) {
+    if (get_transient('kb_filter_rewrites_v2')) {
         return;
     }
     flush_rewrite_rules(false);
-    set_transient('kb_filter_rewrites_v1', 1, MONTH_IN_SECONDS);
+    set_transient('kb_filter_rewrites_v2', 1, MONTH_IN_SECONDS);
 }
 
 /* ============================================================
@@ -259,10 +260,16 @@ function kinobase_menu_item_slug(object $item): string
  * Render desktop filter bar from the "kinobase_filters" nav menu.
  * Each top-level item = dropdown button; children = filter links.
  *
+ * In context mode (context_term set) each pill is a toggle link:
+ *  - selecting a filter from a new group ADDS it to the URL
+ *  - selecting a filter from an already-active group REPLACES the old selection
+ *  - clicking an active filter REMOVES it
+ * Filter slugs are ordered in the URL according to their menu position (left→right).
+ * Example: active = 2020 + action → /category/films/2020/action/
+ *
  * @param string       $active_url   URL of the currently active filter (non-context mode).
  * @param string       $reset_url    URL for the "× Сбросить" link (non-context mode).
- * @param WP_Term|null $context_term When set, generates ?kb_filter=slug links relative to
- *                                   this category so filters combine with the current archive.
+ * @param WP_Term|null $context_term When set, generates toggle links relative to this category.
  */
 function kinobase_render_desktop_filter_bar(
     string   $active_url   = '',
@@ -271,14 +278,79 @@ function kinobase_render_desktop_filter_bar(
 ): void {
     $data = kinobase_get_filter_menu_data('kinobase_filters');
     if (!$data) {
-        return; // menu not configured yet
+        return;
     }
 
     $context_mode = ($context_term !== null);
-    $kb_filter    = $context_mode ? sanitize_key((string) get_query_var('kb_filter', '')) : '';
+
+    // Build ordered flat list of all filter items: [['slug'=>'2020','group_id'=>15], ...]
+    // The ORDER here determines the order of slugs in the generated URL.
+    $all_filter_items = [];
+    foreach ($data['roots'] as $root) {
+        foreach ($data['children'][$root->ID] ?? [] as $kid) {
+            $slug = kinobase_menu_item_slug($kid);
+            if ($slug !== '') {
+                $all_filter_items[] = ['slug' => $slug, 'group_id' => (int) $root->ID];
+            }
+        }
+    }
+
+    // Parse currently active filter slugs from the URL query var
+    $active_slugs = [];
+    if ($context_mode) {
+        $filter_path = sanitize_text_field((string) get_query_var('kb_filter_path', ''));
+        if ($filter_path !== '') {
+            $active_slugs = array_values(array_filter(
+                array_map('sanitize_key', explode('/', trim($filter_path, '/')))
+            ));
+        }
+    }
+
+    // Helper closure: build toggle URL for one filter item.
+    // - Adds the slug if not active (replacing any other slug from the same group).
+    // - Removes the slug if already active.
+    // - Reorders remaining active slugs by menu position.
+    $build_toggle_url = static function (
+        string $toggle_slug,
+        int    $toggle_group_id
+    ) use ($context_term, $active_slugs, $all_filter_items): string {
+        $is_active = in_array($toggle_slug, $active_slugs, true);
+
+        if ($is_active) {
+            // Toggle OFF: remove this slug
+            $new_slugs = array_values(
+                array_filter($active_slugs, static fn($s) => $s !== $toggle_slug)
+            );
+        } else {
+            // Collect all slugs that belong to the same group
+            $same_group = array_column(
+                array_filter($all_filter_items, static fn($i) => $i['group_id'] === $toggle_group_id),
+                'slug'
+            );
+            // Remove any active slug from the same group, then add the new one
+            $new_slugs   = array_values(
+                array_filter($active_slugs, static fn($s) => !in_array($s, $same_group, true))
+            );
+            $new_slugs[] = $toggle_slug;
+        }
+
+        if (empty($new_slugs)) {
+            return rtrim((string) get_term_link($context_term), '/') . '/';
+        }
+
+        // Reorder by menu position (iterate all_filter_items in order)
+        $ordered = [];
+        foreach ($all_filter_items as $item) {
+            if (in_array($item['slug'], $new_slugs, true)) {
+                $ordered[] = $item['slug'];
+            }
+        }
+
+        return rtrim((string) get_term_link($context_term), '/') . '/' . implode('/', $ordered) . '/';
+    };
 
     if ($context_mode) {
-        $has_active = ($kb_filter !== '');
+        $has_active = !empty($active_slugs);
     } else {
         $active_url = rtrim($active_url, '/');
         $has_active = kinobase_filter_menu_has_active($data, $active_url);
@@ -293,7 +365,7 @@ function kinobase_render_desktop_filter_bar(
         $group_active = false;
         foreach ($kids as $kid) {
             if ($context_mode) {
-                if (kinobase_menu_item_slug($kid) === $kb_filter && $kb_filter !== '') {
+                if (in_array(kinobase_menu_item_slug($kid), $active_slugs, true)) {
                     $group_active = true;
                     break;
                 }
@@ -320,9 +392,9 @@ function kinobase_render_desktop_filter_bar(
                         if ($context_mode) {
                             $kid_slug   = kinobase_menu_item_slug($kid);
                             $link_url   = $kid_slug !== ''
-                                ? rtrim((string) get_term_link($context_term), '/') . '/' . rawurlencode($kid_slug) . '/'
+                                ? $build_toggle_url($kid_slug, (int) $parent->ID)
                                 : $kid->url;
-                            $is_current = ($kid_slug !== '' && $kid_slug === $kb_filter);
+                            $is_current = in_array($kid_slug, $active_slugs, true);
                         } else {
                             $link_url   = $kid->url;
                             $is_current = (rtrim($kid->url, '/') === $active_url);
@@ -343,7 +415,7 @@ function kinobase_render_desktop_filter_bar(
     }
 
     if ($context_mode) {
-        if ($kb_filter) {
+        if ($has_active) {
             echo '<a href="' . esc_url(get_term_link($context_term)) . '" class="filter-bar-reset">× '
                 . esc_html__('Сбросить', 'kinobase') . '</a>';
         }
@@ -356,20 +428,82 @@ function kinobase_render_desktop_filter_bar(
 /**
  * Render mobile sliding filter panel from the "kinobase_filters" nav menu.
  *
- * @param string $active_url URL of the currently active filter.
- * @param string $reset_url  URL for the reset link inside the panel.
+ * Supports the same multi-filter toggle logic as the desktop bar when context_term is set:
+ * selecting a filter adds/replaces it in the URL, keeping other active filters.
+ *
+ * @param string       $active_url   URL of the currently active filter (non-context mode).
+ * @param string       $reset_url    URL for the reset link inside the panel.
+ * @param WP_Term|null $context_term When set, generates toggle links relative to this category.
  */
 function kinobase_render_mobile_filter_panel(
-    string $active_url = '',
-    string $reset_url  = ''
+    string   $active_url   = '',
+    string   $reset_url    = '',
+    ?WP_Term $context_term = null
 ): void {
     $data = kinobase_get_filter_menu_data('kinobase_filters');
     if (!$data) {
         return;
     }
 
-    $active_url = rtrim($active_url, '/');
-    $has_active = kinobase_filter_menu_has_active($data, $active_url);
+    $context_mode = ($context_term !== null);
+
+    // Build ordered flat list for URL construction (same logic as desktop bar)
+    $all_filter_items = [];
+    foreach ($data['roots'] as $root) {
+        foreach ($data['children'][$root->ID] ?? [] as $kid) {
+            $slug = kinobase_menu_item_slug($kid);
+            if ($slug !== '') {
+                $all_filter_items[] = ['slug' => $slug, 'group_id' => (int) $root->ID];
+            }
+        }
+    }
+
+    $active_slugs = [];
+    if ($context_mode) {
+        $filter_path = sanitize_text_field((string) get_query_var('kb_filter_path', ''));
+        if ($filter_path !== '') {
+            $active_slugs = array_values(array_filter(
+                array_map('sanitize_key', explode('/', trim($filter_path, '/')))
+            ));
+        }
+        $has_active = !empty($active_slugs);
+        $reset_url  = $has_active ? rtrim((string) get_term_link($context_term), '/') . '/' : '';
+    } else {
+        $active_url = rtrim($active_url, '/');
+        $has_active = kinobase_filter_menu_has_active($data, $active_url);
+    }
+
+    // Toggle URL builder (mirrors desktop bar logic)
+    $build_toggle_url = static function (
+        string $toggle_slug,
+        int    $toggle_group_id
+    ) use ($context_term, $active_slugs, $all_filter_items): string {
+        $is_active = in_array($toggle_slug, $active_slugs, true);
+        if ($is_active) {
+            $new_slugs = array_values(
+                array_filter($active_slugs, static fn($s) => $s !== $toggle_slug)
+            );
+        } else {
+            $same_group = array_column(
+                array_filter($all_filter_items, static fn($i) => $i['group_id'] === $toggle_group_id),
+                'slug'
+            );
+            $new_slugs   = array_values(
+                array_filter($active_slugs, static fn($s) => !in_array($s, $same_group, true))
+            );
+            $new_slugs[] = $toggle_slug;
+        }
+        if (empty($new_slugs)) {
+            return rtrim((string) get_term_link($context_term), '/') . '/';
+        }
+        $ordered = [];
+        foreach ($all_filter_items as $item) {
+            if (in_array($item['slug'], $new_slugs, true)) {
+                $ordered[] = $item['slug'];
+            }
+        }
+        return rtrim((string) get_term_link($context_term), '/') . '/' . implode('/', $ordered) . '/';
+    };
     ?>
     <div class="filter-panel-wrap filter-mobile-only">
         <button class="filter-panel-btn<?php echo $has_active ? ' active' : ''; ?>"
@@ -379,7 +513,7 @@ function kinobase_render_mobile_filter_panel(
             </svg>
             <?php esc_html_e('Фильтры', 'kinobase'); ?>
             <?php if ($has_active) : ?>
-            <span class="filter-panel-badge">!</span>
+            <span class="filter-panel-badge"><?php echo count($active_slugs) ?: '!'; ?></span>
             <?php endif; ?>
         </button>
 
@@ -397,15 +531,24 @@ function kinobase_render_mobile_filter_panel(
                     <?php foreach ($data['roots'] as $parent) :
                         $kids = $data['children'][$parent->ID] ?? [];
                         if (empty($kids)) continue;
+
                         $grp_active = false;
-                        $grp_label  = '';
+                        $grp_labels = [];
                         foreach ($kids as $kid) {
-                            if (rtrim($kid->url, '/') === $active_url) {
-                                $grp_active = true;
-                                $grp_label  = $kid->title;
-                                break;
+                            if ($context_mode) {
+                                $s = kinobase_menu_item_slug($kid);
+                                if (in_array($s, $active_slugs, true)) {
+                                    $grp_active  = true;
+                                    $grp_labels[] = $kid->title;
+                                }
+                            } else {
+                                if (rtrim($kid->url, '/') === $active_url) {
+                                    $grp_active  = true;
+                                    $grp_labels[] = $kid->title;
+                                }
                             }
                         }
+                        $grp_label = implode(', ', $grp_labels);
                     ?>
                     <li>
                         <button class="filter-cat-btn"
@@ -443,10 +586,19 @@ function kinobase_render_mobile_filter_panel(
                 </div>
                 <ul class="filter-sub-list">
                     <?php foreach ($kids as $kid) :
-                        $is_current = (rtrim($kid->url, '/') === $active_url);
+                        if ($context_mode) {
+                            $kid_slug   = kinobase_menu_item_slug($kid);
+                            $link_url   = $kid_slug !== ''
+                                ? $build_toggle_url($kid_slug, (int) $parent->ID)
+                                : $kid->url;
+                            $is_current = in_array($kid_slug, $active_slugs, true);
+                        } else {
+                            $link_url   = $kid->url;
+                            $is_current = (rtrim($kid->url, '/') === $active_url);
+                        }
                     ?>
                     <li>
-                        <a href="<?php echo esc_url($kid->url); ?>"
+                        <a href="<?php echo esc_url($link_url); ?>"
                            class="filter-sub-link<?php echo $is_current ? ' active' : ''; ?>">
                             <?php echo esc_html($kid->title); ?>
                             <?php if ($is_current) : ?>
@@ -481,23 +633,24 @@ function kinobase_apply_category_filter(WP_Query $q): void
         return;
     }
 
-    $slug = sanitize_key((string) $q->get('kb_filter'));
-    if (!$slug) {
+    $filter_path = sanitize_text_field((string) $q->get('kb_filter_path'));
+    if (!$filter_path) {
         return;
     }
 
-    $filter_term = get_category_by_slug($slug);
-    if (!$filter_term) {
+    // Parse path into individual slugs: "2020/action" → ['2020', 'action']
+    $slugs = array_values(array_filter(
+        array_map('sanitize_key', explode('/', trim($filter_path, '/')))
+    ));
+    if (empty($slugs)) {
         return;
     }
 
-    // Get the context category from the query var set by the rewrite rule
+    // Resolve context category (base of the URL, e.g. "films")
     $cat_name = (string) $q->get('category_name');
     if (!$cat_name) {
         return;
     }
-
-    // Handle hierarchical slugs like "parent/child" — use the last segment
     $parts        = explode('/', trim($cat_name, '/'));
     $context_slug = (string) end($parts);
     $context_term = get_category_by_slug($context_slug);
@@ -505,20 +658,29 @@ function kinobase_apply_category_filter(WP_Query $q): void
         return;
     }
 
-    // If the filter slug is a direct child of the context category, this is a
-    // legitimate hierarchical URL (e.g. /category/год/2020/).
-    // Resolve it as a normal child-category archive — no 301, no AND filter.
-    if ((int) $filter_term->parent === (int) $context_term->term_id) {
-        $q->set('category_name', $context_slug . '/' . $slug);
+    // Resolve filter terms, skip unknown slugs
+    $filter_terms = [];
+    foreach ($slugs as $slug) {
+        $term = get_category_by_slug($slug);
+        if ($term) {
+            $filter_terms[] = $term;
+        }
+    }
+    if (empty($filter_terms)) {
         return;
     }
 
-    // Cross-taxonomy filter: show posts in BOTH categories
-    // e.g. /category/series/2020/ → Сериалы AND 2020
-    $q->set('category_name', '');
-    $q->set('tax_query', [
+    // Build AND tax_query: posts must belong to the context AND every filter category.
+    // This covers both cross-taxonomy (films + 2020 + action) and genuine child hierarchies
+    // (год + 2020) — AND gives correct results in both cases.
+    $tax_query = [
         'relation' => 'AND',
         ['taxonomy' => 'category', 'field' => 'term_id', 'terms' => [(int) $context_term->term_id]],
-        ['taxonomy' => 'category', 'field' => 'term_id', 'terms' => [(int) $filter_term->term_id]],
-    ]);
+    ];
+    foreach ($filter_terms as $ft) {
+        $tax_query[] = ['taxonomy' => 'category', 'field' => 'term_id', 'terms' => [(int) $ft->term_id]];
+    }
+
+    $q->set('category_name', '');
+    $q->set('tax_query', $tax_query);
 }

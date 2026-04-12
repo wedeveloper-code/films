@@ -10,8 +10,8 @@ get_header();
 $queried = get_queried_object();
 $is_cat  = ($queried instanceof WP_Term && $queried->taxonomy === 'category');
 
-// Active filter term (e.g. "2020" on /category/films/2020/)
-$kb_filter_term = $is_cat ? kb_get_active_filter_term() : null;
+// Active filter terms (e.g. [2020, action] on /category/films/2020/action/)
+$kb_filter_terms = $is_cat ? kb_get_active_filter_terms() : [];
 
 // Active URL of the current category (for filter bar highlighting)
 $active_url = $is_cat ? get_term_link($queried) : '';
@@ -61,7 +61,7 @@ if ($is_cat) {
                     <h1 class="catalog-title">
                         <?php
                         if ($is_cat) {
-                            echo esc_html(kb_cat_h1($queried, $kb_filter_term));
+                            echo esc_html(kb_cat_h1($queried, $kb_filter_terms));
                         } else {
                             the_archive_title();
                         }
