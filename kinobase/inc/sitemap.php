@@ -24,11 +24,23 @@ if (!defined('ABSPATH')) {
    ============================================================ */
 
 add_action('init', 'kb_sitemap_rewrite', 5);
-add_action('after_switch_theme', 'kb_sitemap_rewrite');
 
 function kb_sitemap_rewrite(): void
 {
     add_rewrite_rule('^sitemap\.xml$', 'index.php?kb_sitemap=1', 'top');
+}
+
+// Flush rewrite rules once per theme version so the sitemap rule
+// is always present after a deployment (no manual Save Permalinks needed)
+add_action('init', 'kb_sitemap_maybe_flush', 999);
+
+function kb_sitemap_maybe_flush(): void
+{
+    $stored_ver = (string) get_option('kb_sitemap_rw_ver', '');
+    if ($stored_ver !== KINOBASE_VERSION) {
+        flush_rewrite_rules(false);
+        update_option('kb_sitemap_rw_ver', KINOBASE_VERSION);
+    }
 }
 
 add_filter('query_vars', static function (array $vars): array {
@@ -118,7 +130,7 @@ function kb_sitemap_generate(): string
                 $urls[]   = [
                     'loc'        => get_permalink((int) $id),
                     'lastmod'    => $modified ?: gmdate('Y-m-d'),
-                    'changefreq' => 'biweekly',
+                    'changefreq' => 'monthly',
                     'priority'   => '0.5',
                 ];
             }
@@ -144,7 +156,7 @@ function kb_sitemap_generate(): string
                 $urls[]   = [
                     'loc'        => get_permalink((int) $id),
                     'lastmod'    => $modified ?: gmdate('Y-m-d'),
-                    'changefreq' => 'biweekly',
+                    'changefreq' => 'monthly',
                     'priority'   => '0.5',
                 ];
             }

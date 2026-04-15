@@ -128,12 +128,33 @@ function kinobase_canonical_tag(): void
 
 /* ============================================================
    Pagination: append "— страница N" to document title
+
+   Two hooks needed:
+   1. document_title_parts  — for WP-generated titles (runs when
+      pre_get_document_title returns empty string).
+   2. pre_get_document_title at priority 999 — for custom titles
+      set by SEO hooks (e.g. kb_cat_seo_title). Only appends when
+      the title is already non-empty.
    ============================================================ */
 
-add_filter('pre_get_document_title', 'kinobase_paged_title_suffix', 20);
+add_filter('document_title_parts', 'kinobase_paged_title_parts', 10);
+
+function kinobase_paged_title_parts(array $parts): array
+{
+    $paged = max((int) get_query_var('paged'), (int) get_query_var('page'));
+    if ($paged > 1 && !empty($parts['title'])) {
+        $parts['title'] = rtrim($parts['title']) . ' — страница ' . $paged;
+    }
+    return $parts;
+}
+
+add_filter('pre_get_document_title', 'kinobase_paged_title_suffix', 999);
 
 function kinobase_paged_title_suffix(string $title): string
 {
+    if (empty($title)) {
+        return $title; // Let document_title_parts handle WP-generated titles
+    }
     $paged = max((int) get_query_var('paged'), (int) get_query_var('page'));
     if ($paged > 1) {
         $title = rtrim($title) . ' — страница ' . $paged;

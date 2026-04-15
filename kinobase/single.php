@@ -81,7 +81,7 @@ while (have_posts()) :
                                 $full_url = wp_get_attachment_image_url((int) $img_id, 'full');
                                 echo wp_get_attachment_image((int) $img_id, 'movie-poster', false, [
                                     'class'          => 'single-poster-img' . ($idx === 0 ? ' active' : ''),
-                                    'alt'            => esc_attr($title . ($idx > 0 ? ' — кадр ' . ($idx + 1) : '')),
+                                    'alt'            => esc_attr($title . ($idx > 0 ? ' — фото ' . ($idx + 1) : '')),
                                     'loading'        => $idx < 2 ? 'eager' : 'lazy',
                                     'fetchpriority'  => $idx === 0 ? 'high' : 'auto',
                                     'data-index'     => (string) $idx,
@@ -120,7 +120,7 @@ while (have_posts()) :
                                     data-index="<?php echo $idx; ?>"
                                     aria-label="<?php printf(esc_attr__('Фото %d', 'kinobase'), $idx + 1); ?>">
                                 <img src="<?php echo esc_url($thumb_url); ?>"
-                                     alt="<?php echo esc_attr($title . ' — кадр ' . ($idx + 1)); ?>"
+                                     alt="<?php echo esc_attr($title . ' — фото ' . ($idx + 1)); ?>"
                                      loading="lazy">
                             </button>
                             <?php endif; endforeach; ?>
