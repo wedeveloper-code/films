@@ -144,6 +144,7 @@ function kinobase_paged_title_parts(array $parts): array
     $paged = max((int) get_query_var('paged'), (int) get_query_var('page'));
     if ($paged > 1 && !empty($parts['title'])) {
         $parts['title'] = rtrim($parts['title']) . ' — страница ' . $paged;
+        unset($parts['page']); // Remove WP's default "Страница N" to avoid duplication
     }
     return $parts;
 }
