@@ -91,6 +91,71 @@ function kb_redirect_logged_in_from_auth(): void
 }
 
 /* ============================================================
+   Admin settings page — Registration options
+   ============================================================ */
+
+add_action('admin_menu', 'kb_auth_settings_menu');
+
+function kb_auth_settings_menu(): void
+{
+    add_options_page(
+        __('Регистрация', 'kinobase'),
+        __('Регистрация', 'kinobase'),
+        'manage_options',
+        'kb_auth_settings',
+        'kb_auth_settings_page'
+    );
+}
+
+function kb_auth_settings_page(): void
+{
+    if (!current_user_can('manage_options')) return;
+
+    if (
+        isset($_POST['kb_auth_nonce']) &&
+        wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['kb_auth_nonce'])), 'kb_auth_save')
+    ) {
+        update_option('kb_auth_require_confirm', !empty($_POST['kb_auth_require_confirm']) ? '1' : '0');
+        echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Сохранено.', 'kinobase') . '</p></div>';
+    }
+
+    $require = (bool) get_option('kb_auth_require_confirm', '1');
+    ?>
+    <div class="wrap">
+        <h1><?php esc_html_e('Настройки регистрации', 'kinobase'); ?></h1>
+        <p style="max-width:620px;color:#555">
+            <?php esc_html_e(
+                'По умолчанию после заполнения формы регистрации пользователь получает письмо '
+                . 'со ссылкой подтверждения — и только после перехода по ней создаётся аккаунт. '
+                . 'Если почтовые отправки на сервере не настроены — отключите подтверждение: '
+                . 'аккаунт будет создан сразу, а пароль показан на экране.',
+                'kinobase'
+            ); ?>
+        </p>
+        <form method="post">
+            <?php wp_nonce_field('kb_auth_save', 'kb_auth_nonce'); ?>
+            <table class="form-table">
+                <tr>
+                    <th><?php esc_html_e('Подтверждение по email', 'kinobase'); ?></th>
+                    <td>
+                        <label>
+                            <input type="checkbox" name="kb_auth_require_confirm" value="1"
+                                <?php checked($require); ?>>
+                            <?php esc_html_e('Требовать подтверждение email перед созданием аккаунта', 'kinobase'); ?>
+                        </label>
+                        <p class="description">
+                            <?php esc_html_e('Снимите галочку, если почтовые отправки не работают — пользователи будут созданы сразу.', 'kinobase'); ?>
+                        </p>
+                    </td>
+                </tr>
+            </table>
+            <?php submit_button(__('Сохранить', 'kinobase')); ?>
+        </form>
+    </div>
+    <?php
+}
+
+/* ============================================================
    Process registration form (POST on /register/)
    ============================================================ */
 
@@ -132,6 +197,26 @@ function kb_handle_register(): void
         kb_auth_redirect_back('register', 'email_exists');
     }
 
+    $require_confirm = (bool) get_option('kb_auth_require_confirm', '1');
+    $site_name       = get_bloginfo('name');
+
+    // ---- Mode A: no email confirmation — create user immediately ----
+    if (!$require_confirm) {
+        $password = wp_generate_password(12, false, false);
+        $user_id  = wp_create_user($username, $password, $email);
+        if (is_wp_error($user_id)) {
+            kb_auth_redirect_back('register', 'create_failed');
+        }
+        (new WP_User($user_id))->set_role((string) get_option('default_role', 'subscriber'));
+        // Show password directly on login page (pass via transient, consumed once)
+        $flash_key = 'kb_reg_ok_' . md5($email . time());
+        set_transient($flash_key, ['username' => $username, 'password' => $password], 300);
+        wp_safe_redirect(add_query_arg(['kb_status' => 'registered_direct', 'kb_fk' => $flash_key], home_url('/login/')));
+        exit;
+    }
+
+    // ---- Mode B: email confirmation (original flow) ----
+
     // Rate-limit: one confirmation email per email per hour
     if (get_transient('kb_reg_rate_' . md5($email))) {
         kb_auth_redirect_back('register', 'rate_limit');
@@ -147,7 +232,6 @@ function kb_handle_register(): void
 
     // Send confirmation email
     $confirm_url = add_query_arg('kb_confirm', $token, home_url('/'));
-    $site_name   = get_bloginfo('name');
 
     wp_mail(
         $email,
@@ -378,6 +462,7 @@ function kb_auth_status_message(string $code): string
         'confirm_sent'       => 'Письмо с подтверждением отправлено. Проверьте почту и перейдите по ссылке для завершения регистрации.',
         'confirm_invalid'    => 'Ссылка недействительна или её срок истёк. Попробуйте зарегистрироваться заново.',
         'registered'         => 'Регистрация завершена! Логин и пароль отправлены на ваш email.',
+        'registered_direct'  => 'Аккаунт создан! Войдите с данными ниже.',
         'already_registered' => 'Этот аккаунт уже активирован. Войдите, используя свои данные.',
         'create_failed'      => 'Не удалось создать аккаунт. Попробуйте зарегистрироваться заново.',
     ][$code] ?? '';

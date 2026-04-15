@@ -115,7 +115,7 @@ if ($card_quality_term) {
                 $lazy   = ($i === 0 && $is_priority) ? 'eager' : 'lazy';
                 $prio   = ($i === 0 && $is_priority) ? ' fetchpriority="high"' : '';
                 echo '<img src="' . esc_url($src) . '" class="gallery-img' . $active . '"'
-                    . ' alt="' . esc_attr($title . ' — ' . __('фото', 'kinobase') . ' ' . ($i + 1)) . '"'
+                    . ' alt="' . esc_attr(mb_strtolower($title) . ' - фото ' . ($i + 1)) . '"'
                     . ' loading="' . $lazy . '"' . $prio . '>';
             }
 

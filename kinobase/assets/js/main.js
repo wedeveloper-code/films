@@ -5,14 +5,40 @@
 
 /* ============================================================
    1. THEME MANAGEMENT
+   Inline script in header.php already applied the theme before paint.
+   This block handles the toggle button and optional time-based refresh.
    ============================================================ */
 (function () {
-    var html = document.documentElement;
+    // Re-apply on load in case JS wasn't cached (no-op if already correct)
+    var cfg  = window.KinoBase || {};
     var saved = localStorage.getItem('kinobase_theme');
-    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    var isDark = saved ? saved === 'dark' : prefersDark;
-    if (!isDark) html.classList.remove('dark');
-    else html.classList.add('dark');
+    var isDark;
+    if (saved) {
+        isDark = (saved === 'dark');
+    } else if (cfg.themeAutoTime) {
+        var h  = new Date().getHours();
+        var df = parseInt(cfg.themeDarkFrom,  10) || 20;
+        var lf = parseInt(cfg.themeLightFrom, 10) || 8;
+        isDark = (df < lf) ? (h >= df && h < lf) : (h >= df || h < lf);
+    } else {
+        isDark = (cfg.defaultTheme !== 'light');
+    }
+    document.documentElement.classList.toggle('dark', isDark);
+
+    // Auto-switch: check every minute if time-based mode is enabled and
+    // no manual override is stored in localStorage
+    if (cfg.themeAutoTime) {
+        setInterval(function () {
+            if (localStorage.getItem('kinobase_theme')) return; // manual override wins
+            var h  = new Date().getHours();
+            var df = parseInt(cfg.themeDarkFrom,  10) || 20;
+            var lf = parseInt(cfg.themeLightFrom, 10) || 8;
+            var dark = (df < lf) ? (h >= df && h < lf) : (h >= df || h < lf);
+            document.documentElement.classList.toggle('dark', dark);
+            var icon = document.getElementById('theme-icon');
+            if (icon) icon.textContent = dark ? '🌙' : '☀️';
+        }, 60000);
+    }
 })();
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -44,6 +70,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (themeBtn) {
         themeBtn.addEventListener('click', function () {
             applyTheme(!document.documentElement.classList.contains('dark'));
+            // Manual click stores preference — disables auto-switch until page reload
         });
     }
 

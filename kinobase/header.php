@@ -5,11 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <?php wp_head(); ?>
     <script>
-    /* Apply saved theme BEFORE paint to prevent flash */
+    /* Apply theme BEFORE paint — prevents flash of wrong theme (FOUC) */
     (function(){
-        var t = localStorage.getItem('kinobase_theme');
-        var d = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        var isDark = t ? t === 'dark' : d;
+        var cfg = {
+            def:        '<?php echo esc_js((string) get_option('kb_default_theme', 'dark')); ?>',
+            autoTime:   <?php echo get_option('kb_theme_auto_time', '0') ? 'true' : 'false'; ?>,
+            darkFrom:   <?php echo (int) get_option('kb_theme_dark_from',  20); ?>,
+            lightFrom:  <?php echo (int) get_option('kb_theme_light_from', 8); ?>
+        };
+        var saved = localStorage.getItem('kinobase_theme');
+        var isDark;
+        if (saved) {
+            isDark = (saved === 'dark');
+        } else if (cfg.autoTime) {
+            var h = new Date().getHours();
+            var df = cfg.darkFrom, lf = cfg.lightFrom;
+            isDark = (df < lf) ? (h >= df && h < lf) : (h >= df || h < lf);
+        } else {
+            isDark = (cfg.def === 'dark');
+        }
         document.documentElement.classList.toggle('dark', isDark);
     })();
     </script>

@@ -94,12 +94,173 @@ add_filter('get_the_archive_title', function (string $title): string {
 add_filter('comment_flood_filter', '__return_false');
 
 /* ============================================================
-   Customizer: footer copyright text
+   Canonical URL tag for all public pages
+   ============================================================ */
+
+add_action('wp_head', 'kinobase_canonical_tag', 1);
+
+function kinobase_canonical_tag(): void
+{
+    $canonical = '';
+    $paged     = max((int) get_query_var('paged'), (int) get_query_var('page'));
+
+    if (is_front_page()) {
+        $canonical = $paged > 1 ? get_pagenum_link($paged) : home_url('/');
+    } elseif (is_singular()) {
+        $canonical = (string) get_permalink();
+    } elseif (is_category() || is_tag() || is_tax()) {
+        $term = get_queried_object();
+        if ($term instanceof WP_Term) {
+            $base      = (string) get_term_link($term);
+            $canonical = $paged > 1 ? get_pagenum_link($paged) : $base;
+        }
+    } elseif (is_post_type_archive()) {
+        $base      = (string) get_post_type_archive_link((string) get_post_type());
+        $canonical = $paged > 1 ? get_pagenum_link($paged) : $base;
+    } elseif (is_home()) {
+        $canonical = $paged > 1 ? get_pagenum_link($paged) : home_url('/');
+    }
+
+    if ($canonical) {
+        echo '<link rel="canonical" href="' . esc_url($canonical) . '">' . "\n";
+    }
+}
+
+/* ============================================================
+   Pagination: append "— страница N" to document title
+   ============================================================ */
+
+add_filter('pre_get_document_title', 'kinobase_paged_title_suffix', 20);
+
+function kinobase_paged_title_suffix(string $title): string
+{
+    $paged = max((int) get_query_var('paged'), (int) get_query_var('page'));
+    if ($paged > 1) {
+        $title = rtrim($title) . ' — страница ' . $paged;
+    }
+    return $title;
+}
+
+/* ============================================================
+   Admin settings: Theme defaults + time-based auto-switch
+   ============================================================ */
+
+add_action('admin_menu', 'kinobase_theme_settings_menu');
+
+function kinobase_theme_settings_menu(): void
+{
+    add_options_page(
+        __('Настройки темы', 'kinobase'),
+        __('Настройки темы', 'kinobase'),
+        'manage_options',
+        'kinobase_theme',
+        'kinobase_theme_settings_page'
+    );
+}
+
+function kinobase_theme_settings_page(): void
+{
+    if (!current_user_can('manage_options')) return;
+
+    if (
+        isset($_POST['kb_theme_nonce']) &&
+        wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['kb_theme_nonce'])), 'kb_theme_save')
+    ) {
+        update_option('kb_default_theme',    sanitize_text_field(wp_unslash($_POST['kb_default_theme']    ?? 'dark')));
+        update_option('kb_theme_auto_time',  !empty($_POST['kb_theme_auto_time']) ? '1' : '0');
+        update_option('kb_theme_dark_from',  max(0, min(23, (int) ($_POST['kb_theme_dark_from']  ?? 20))));
+        update_option('kb_theme_light_from', max(0, min(23, (int) ($_POST['kb_theme_light_from'] ?? 8))));
+        echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Сохранено.', 'kinobase') . '</p></div>';
+    }
+
+    $default    = (string) get_option('kb_default_theme',    'dark');
+    $auto       = (bool)   get_option('kb_theme_auto_time',  '0');
+    $dark_from  = (int)    get_option('kb_theme_dark_from',  20);
+    $light_from = (int)    get_option('kb_theme_light_from', 8);
+    ?>
+    <div class="wrap">
+        <h1><?php esc_html_e('Настройки темы', 'kinobase'); ?></h1>
+        <p style="max-width:600px;color:#555">
+            <?php esc_html_e(
+                'Выберите тему по умолчанию для новых посетителей. '
+                . 'Пользователи могут вручную переключить тему через меню — их выбор сохраняется в localStorage.',
+                'kinobase'
+            ); ?>
+        </p>
+        <form method="post">
+            <?php wp_nonce_field('kb_theme_save', 'kb_theme_nonce'); ?>
+            <table class="form-table">
+                <tr>
+                    <th><?php esc_html_e('Тема по умолчанию', 'kinobase'); ?></th>
+                    <td>
+                        <label style="margin-right:1.5rem">
+                            <input type="radio" name="kb_default_theme" value="dark"
+                                <?php checked($default, 'dark'); ?>>
+                            <?php esc_html_e('Тёмная', 'kinobase'); ?>
+                        </label>
+                        <label>
+                            <input type="radio" name="kb_default_theme" value="light"
+                                <?php checked($default, 'light'); ?>>
+                            <?php esc_html_e('Светлая', 'kinobase'); ?>
+                        </label>
+                    </td>
+                </tr>
+                <tr>
+                    <th><?php esc_html_e('Автопереключение по времени', 'kinobase'); ?></th>
+                    <td>
+                        <label>
+                            <input type="checkbox" name="kb_theme_auto_time" value="1"
+                                <?php checked($auto); ?>>
+                            <?php esc_html_e('Переключать тему автоматически по расписанию', 'kinobase'); ?>
+                        </label>
+                        <p class="description">
+                            <?php esc_html_e('Если включено — настройки ниже определяют, когда включается тёмная/светлая тема. Ручной выбор пользователя отключает авторежим до перезагрузки страницы.', 'kinobase'); ?>
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><?php esc_html_e('Тёмная тема с (ч.)', 'kinobase'); ?></th>
+                    <td>
+                        <input type="number" name="kb_theme_dark_from" value="<?php echo (int) $dark_from; ?>"
+                               min="0" max="23" style="width:80px">
+                        <span class="description"><?php esc_html_e('Час суток (0–23), с которого включается тёмная тема', 'kinobase'); ?></span>
+                    </td>
+                </tr>
+                <tr>
+                    <th><?php esc_html_e('Светлая тема с (ч.)', 'kinobase'); ?></th>
+                    <td>
+                        <input type="number" name="kb_theme_light_from" value="<?php echo (int) $light_from; ?>"
+                               min="0" max="23" style="width:80px">
+                        <span class="description"><?php esc_html_e('Час суток (0–23), с которого включается светлая тема', 'kinobase'); ?></span>
+                    </td>
+                </tr>
+            </table>
+            <?php submit_button(__('Сохранить', 'kinobase')); ?>
+        </form>
+    </div>
+    <?php
+}
+
+// Pass theme settings to JS
+add_filter('kinobase_js_data', 'kinobase_theme_js_data');
+
+function kinobase_theme_js_data(array $data): array
+{
+    $data['defaultTheme']  = (string) get_option('kb_default_theme',    'dark');
+    $data['themeAutoTime'] = (bool)   get_option('kb_theme_auto_time',  '0');
+    $data['themeDarkFrom'] = (int)    get_option('kb_theme_dark_from',  20);
+    $data['themeLightFrom']= (int)    get_option('kb_theme_light_from', 8);
+    return $data;
+}
+
+/* ============================================================
+   Customizer: footer copyright text + homepage bottom text
    ============================================================ */
 add_action('customize_register', 'kinobase_customizer_register');
 
 function kinobase_customizer_register(WP_Customize_Manager $wp_customize): void
 {
+    // --- Footer ---
     $wp_customize->add_section('kinobase_footer', [
         'title'    => __('Подвал сайта', 'kinobase'),
         'priority' => 120,
@@ -115,6 +276,25 @@ function kinobase_customizer_register(WP_Customize_Manager $wp_customize): void
         'label'       => __('Текст авторского права (подвал)', 'kinobase'),
         'description' => __('Оставьте пустым для использования стандартного текста.', 'kinobase'),
         'section'     => 'kinobase_footer',
+        'type'        => 'textarea',
+    ]);
+
+    // --- Homepage bottom text ---
+    $wp_customize->add_section('kinobase_homepage', [
+        'title'    => __('Главная страница', 'kinobase'),
+        'priority' => 110,
+    ]);
+
+    $wp_customize->add_setting('kinobase_home_bottom_text', [
+        'default'           => '',
+        'sanitize_callback' => 'wp_kses_post',
+        'transport'         => 'refresh',
+    ]);
+
+    $wp_customize->add_control('kinobase_home_bottom_text', [
+        'label'       => __('Текст внизу главной страницы', 'kinobase'),
+        'description' => __('Отображается после блоков с фильмами, перед подвалом. Поддерживает HTML.', 'kinobase'),
+        'section'     => 'kinobase_homepage',
         'type'        => 'textarea',
     ]);
 }

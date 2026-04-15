@@ -35,12 +35,13 @@ function kinobase_enqueue_assets(): void
         true
     );
 
-    // Pass data to JS
-    wp_localize_script('kinobase-main', 'KinoBase', [
+    // Pass data to JS (base + theme settings merged via filter)
+    $js_data = apply_filters('kinobase_js_data', [
         'ajaxUrl'      => admin_url('admin-ajax.php'),
         'nonce'        => wp_create_nonce('kinobase_views'),
         'contactNonce' => wp_create_nonce('kinobase_contact'),
     ]);
+    wp_localize_script('kinobase-main', 'KinoBase', $js_data);
 }
 
 // Preload Inter font for performance

@@ -10,6 +10,10 @@
 
 get_header();
 
+// Pagination: front page uses 'page' query var (not 'paged')
+$home_paged = max(1, (int) (get_query_var('page') ?: get_query_var('paged') ?: 1));
+$home_per_page = 10; // cards per section per page
+
 // Year filter (set when URL is e.g. /2022/)
 $kb_home_year = sanitize_text_field(get_query_var('kb_home_year'));
 $year_term    = null;
@@ -91,12 +95,13 @@ if ($year_parent) {
                     ? kinobase_filter_url($section['slug'], $kb_home_year)
                     : get_category_link($cat->term_id);
 
-                // Build query args — add year tax_query when filtering
+                // Build query args — offset for pagination, year tax_query when filtering
                 $query_args = [
                     'post_type'               => ['post', 'movie'],
                     'post_status'             => 'publish',
-                    'posts_per_page'          => 10,
-                    'no_found_rows'           => true,
+                    'posts_per_page'          => $home_per_page,
+                    'offset'                  => ($home_paged - 1) * $home_per_page,
+                    'no_found_rows'           => false,
                     'orderby'                 => 'date',
                     'order'                   => 'DESC',
                     'update_post_term_cache'  => false,
@@ -114,6 +119,8 @@ if ($year_parent) {
                 }
 
                 $query = new WP_Query($query_args);
+                // Track max pages across all sections for the pagination widget
+                $home_max_pages = max($home_max_pages ?? 1, (int) $query->max_num_pages);
 
                 if (!$query->have_posts()) continue;
                 ?>
@@ -160,6 +167,69 @@ if ($year_parent) {
             ?>
         </div>
         <!-- /Category blocks -->
+
+        <?php
+        /* ---- Pagination ---- */
+        $home_max_pages = $home_max_pages ?? 1;
+        if ($home_max_pages > 1) :
+            $base = $kb_home_year ? home_url('/' . $kb_home_year . '/') : home_url('/');
+        ?>
+        <div class="pagination" style="margin-top:2rem">
+            <?php
+            echo paginate_links([
+                'base'      => $base . '%_%',
+                'format'    => 'page/%#%/',
+                'current'   => $home_paged,
+                'total'     => $home_max_pages,
+                'prev_text' => '&laquo;',
+                'next_text' => '&raquo;',
+            ]);
+            ?>
+        </div>
+
+        <?php if ($home_max_pages > 1) : ?>
+        <nav class="mobile-page-list" aria-label="<?php esc_attr_e('Страницы', 'kinobase'); ?>">
+            <?php if ($home_paged > 1) : ?>
+            <a href="<?php echo esc_url($home_paged === 2 ? $base : $base . 'page/' . ($home_paged - 1) . '/'); ?>"
+               class="mobile-page-num">&laquo;</a>
+            <?php endif; ?>
+            <?php
+            $links = paginate_links([
+                'base'      => $base . '%_%',
+                'format'    => 'page/%#%/',
+                'current'   => $home_paged,
+                'total'     => $home_max_pages,
+                'prev_text' => '',
+                'next_text' => '',
+                'type'      => 'array',
+                'end_size'  => 1,
+                'mid_size'  => 2,
+            ]);
+            if ($links) {
+                foreach ($links as $link) {
+                    $link = preg_replace('/class="([^"]*page-numbers current[^"]*)"/', 'class="mobile-page-num current"', $link);
+                    $link = preg_replace('/class="([^"]*page-numbers[^"]*)"/', 'class="mobile-page-num"', $link);
+                    echo $link;
+                }
+            }
+            ?>
+            <?php if ($home_paged < $home_max_pages) : ?>
+            <a href="<?php echo esc_url($base . 'page/' . ($home_paged + 1) . '/'); ?>"
+               class="mobile-page-num">&raquo;</a>
+            <?php endif; ?>
+        </nav>
+        <?php endif; ?>
+        <?php endif; ?>
+
+        <?php
+        /* ---- Homepage bottom text (Customizer → Главная страница) ---- */
+        $home_bottom = get_theme_mod('kinobase_home_bottom_text', '');
+        if ($home_bottom) :
+        ?>
+        <div class="archive-bottom-desc" style="margin-top:2.5rem">
+            <?php echo wp_kses_post($home_bottom); ?>
+        </div>
+        <?php endif; ?>
 
     </div>
 </main>
