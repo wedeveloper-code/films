@@ -151,7 +151,7 @@ while (have_posts()) :
                     <!-- Rating -->
                     <?php if ($rating_val !== null) : ?>
                     <div class="single-rating">
-                        <div class="rating-stars" aria-label="<?php printf(esc_attr__('Рейтинг: %s из 10', 'fastwp'), number_format($rating_val, 1)); ?>">
+                        <div class="rating-stars" role="img" aria-label="<?php printf(esc_attr__('Рейтинг: %s из 10', 'fastwp'), number_format($rating_val, 1)); ?>">
                             <?php for ($s = 1; $s <= 10; $s++) :
                                 $filled = $s <= round($rating_val);
                             ?>
@@ -175,7 +175,7 @@ while (have_posts()) :
 
                     <!-- Pricing (split: Аренда left / Покупка right) -->
                     <div class="single-pricing">
-                        <h3 class="single-section-label"><?php esc_html_e('Доступ к фильму', 'fastwp'); ?></h3>
+                        <h2 class="single-section-label"><?php esc_html_e('Доступ к фильму', 'fastwp'); ?></h2>
 
                         <div class="single-price-split">
                             <div class="single-price-col">
@@ -282,7 +282,7 @@ while (have_posts()) :
                     if (!empty($cast_ids)) :
                     ?>
                     <div class="single-cast">
-                        <h3 class="single-section-label"><?php esc_html_e('В ролях', 'fastwp'); ?></h3>
+                        <h2 class="single-section-label"><?php esc_html_e('В ролях', 'fastwp'); ?></h2>
                         <div class="cast-list">
                             <?php foreach ($cast_ids as $actor_id) :
                                 $actor = get_post($actor_id);
@@ -305,7 +305,7 @@ while (have_posts()) :
                     <!-- Box office -->
                     <?php if (!empty($box_office) && is_array($box_office)) : ?>
                     <div class="single-box-office">
-                        <h3 class="single-section-label"><?php esc_html_e('Кассовые сборы', 'fastwp'); ?></h3>
+                        <h2 class="single-section-label"><?php esc_html_e('Кассовые сборы', 'fastwp'); ?></h2>
                         <table class="single-meta-table">
                             <tbody>
                             <?php foreach ($box_office as $row) :
@@ -326,7 +326,7 @@ while (have_posts()) :
                     <!-- Description -->
                     <?php if (get_the_content()) : ?>
                     <div class="single-description">
-                        <h3 class="single-section-label"><?php esc_html_e('Описание', 'fastwp'); ?></h3>
+                        <h2 class="single-section-label"><?php esc_html_e('Описание', 'fastwp'); ?></h2>
                         <div class="single-description-text">
                             <?php the_content(); ?>
                         </div>
@@ -336,7 +336,7 @@ while (have_posts()) :
                     <!-- Collections (Подборки) — shown below description -->
                     <?php if ($collections_group) : ?>
                     <div class="single-collections">
-                        <h3 class="single-section-label"><?php echo esc_html($collections_group['parent']->name); ?></h3>
+                        <h2 class="single-section-label"><?php echo esc_html($collections_group['parent']->name); ?></h2>
                         <div class="collections-tags">
                             <?php foreach ($collections_group['terms'] as $t) : ?>
                             <a href="<?php echo esc_url(get_category_link($t->term_id)); ?>"
