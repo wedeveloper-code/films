@@ -160,7 +160,9 @@ if ($is_cat) {
             <?php if ($max_pages > 1) : ?>
             <nav class="mobile-page-list" aria-label="<?php esc_attr_e('Страницы', 'fastwp'); ?>">
                 <?php if ($current_page > 1) : ?>
-                <a href="<?php echo esc_url(get_pagenum_link($current_page - 1)); ?>" class="mobile-page-num">&laquo;</a>
+                <a href="<?php echo esc_url(get_pagenum_link($current_page - 1)); ?>"
+                   class="mobile-page-num"
+                   aria-label="<?php esc_attr_e('Предыдущая страница', 'fastwp'); ?>">&laquo;</a>
                 <?php endif; ?>
                 <?php
                 // Show: first, nearby pages, last — with ellipsis
@@ -176,14 +178,22 @@ if ($is_cat) {
                 if ($links) {
                     foreach ($links as $link) {
                         // Convert WP's <a>/<span> to our mobile-page-num class
-                        $link = preg_replace('/class="([^"]*page-numbers current[^"]*)"/', 'class="mobile-page-num current"', $link);
+                        $link = preg_replace('/class="([^"]*page-numbers current[^"]*)"/', 'class="mobile-page-num current" aria-current="page"', $link);
                         $link = preg_replace('/class="([^"]*page-numbers[^"]*)"/', 'class="mobile-page-num"', $link);
+                        // Add aria-label="Страница N" to numeric page links
+                        $link = preg_replace_callback(
+                            '/(<a\b[^>]*class="mobile-page-num"[^>]*>)(\d+)(<\/a>)/',
+                            static fn($m) => rtrim($m[1], '>') . ' aria-label="Страница ' . (int) $m[2] . '">' . $m[2] . $m[3],
+                            $link
+                        );
                         echo $link;
                     }
                 }
                 ?>
                 <?php if ($current_page < $max_pages) : ?>
-                <a href="<?php echo esc_url(get_pagenum_link($current_page + 1)); ?>" class="mobile-page-num">&raquo;</a>
+                <a href="<?php echo esc_url(get_pagenum_link($current_page + 1)); ?>"
+                   class="mobile-page-num"
+                   aria-label="<?php esc_attr_e('Следующая страница', 'fastwp'); ?>">&raquo;</a>
                 <?php endif; ?>
             </nav>
             <?php endif; ?>
