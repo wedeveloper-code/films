@@ -97,7 +97,7 @@ if ($is_cat) {
             </div><!-- .filter-bar -->
             <?php endif; ?>
 
-        <?php if (!empty($filter_terms)) : ?>
+        <?php if (!empty($filter_terms) && !$has_filter_menu) : ?>
         <nav class="archive-filter" aria-label="<?php esc_attr_e('Фильтр по подкатегориям', 'fastwp'); ?>">
             <?php if ($show_all_link) : ?>
             <a href="<?php echo esc_url(get_category_link($filter_parent->term_id)); ?>"
