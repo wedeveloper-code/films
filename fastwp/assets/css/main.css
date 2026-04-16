@@ -686,10 +686,10 @@ ul, ol { list-style: none; }
   margin-bottom: 3rem;
 }
 @media (min-width: 768px) {
-  .single-layout { grid-template-columns: 40% 1fr; }
+  .single-layout { grid-template-columns: 35% 1fr; }
 }
 @media (min-width: 1024px) {
-  .single-layout { grid-template-columns: 40% 1fr; }
+  .single-layout { grid-template-columns: 35% 1fr; }
 }
 
 /* Poster viewer */
