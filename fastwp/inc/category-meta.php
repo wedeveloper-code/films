@@ -60,6 +60,26 @@ function kb_cat_vars_reference_html(bool $with_filter = false): string
    Variable replacement for category pages
    ============================================================ */
 
+/**
+ * Get the per-category SEO rule set via the settings page.
+ * Returns array with keys h1, title, desc (any may be empty string).
+ *
+ * @return array{h1:string,title:string,desc:string}
+ */
+function kb_get_cat_seo_rule(int $term_id): array
+{
+    static $cache = null;
+    if ($cache === null) {
+        $cache = (array) get_option('kb_cat_seo_rules', []);
+    }
+    $rule = (array) ($cache[(string) $term_id] ?? []);
+    return [
+        'h1'    => (string) ($rule['h1']    ?? ''),
+        'title' => (string) ($rule['title'] ?? ''),
+        'desc'  => (string) ($rule['desc']  ?? ''),
+    ];
+}
+
 function kb_replace_cat_vars(string $tpl, WP_Term $term, ?WP_Term $filter_term = null): string
 {
     $parent_name = '';
@@ -253,6 +273,51 @@ function kb_cat_seo_settings_page(): void
         return;
     }
 
+    // ---- Handle per-category rules POST ----
+    $rules_notice = '';
+    $cat_rules    = (array) get_option('kb_cat_seo_rules', []);
+
+    if (
+        isset($_POST['kb_cat_rules_nonce']) &&
+        wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['kb_cat_rules_nonce'])), 'kb_cat_seo_rules_save')
+    ) {
+        // Add new rule
+        if (!empty($_POST['kb_new_cat_id'])) {
+            $new_id = (string) (int) $_POST['kb_new_cat_id'];
+            if ((int) $new_id > 0) {
+                $cat_rules[$new_id] = [
+                    'h1'    => sanitize_text_field(wp_unslash($_POST['kb_new_cat_h1']    ?? '')),
+                    'title' => sanitize_text_field(wp_unslash($_POST['kb_new_cat_title'] ?? '')),
+                    'desc'  => sanitize_textarea_field(wp_unslash($_POST['kb_new_cat_desc'] ?? '')),
+                ];
+            }
+        }
+
+        // Remove rule
+        if (!empty($_POST['kb_remove_cat_rule'])) {
+            $rk = (string) (int) $_POST['kb_remove_cat_rule'];
+            unset($cat_rules[$rk]);
+        }
+
+        // Save edits to existing rules
+        if (!empty($_POST['kb_cat_rules']) && is_array($_POST['kb_cat_rules'])) {
+            foreach ($_POST['kb_cat_rules'] as $tid => $fields) {
+                $tid = (string) (int) $tid;
+                if (!isset($cat_rules[$tid])) {
+                    continue;
+                }
+                $cat_rules[$tid] = [
+                    'h1'    => sanitize_text_field(wp_unslash($fields['h1']    ?? '')),
+                    'title' => sanitize_text_field(wp_unslash($fields['title'] ?? '')),
+                    'desc'  => sanitize_textarea_field(wp_unslash($fields['desc'] ?? '')),
+                ];
+            }
+        }
+
+        update_option('kb_cat_seo_rules', $cat_rules);
+        $rules_notice = 'success';
+    }
+
     $h1_val        = (string) get_option('kb_cat_h1_tpl',         '');
     $title_default = '%название_рубрики% — смотреть онлайн | %сайт%';
     $title_val     = (string) get_option('kb_cat_seo_title_tpl', $title_default);
@@ -325,6 +390,137 @@ function kb_cat_seo_settings_page(): void
             <br>
 
             <?php submit_button(__('Сохранить шаблоны', 'fastwp')); ?>
+        </form>
+
+        <hr style="margin:2.5rem 0;border:none;border-top:1px solid #ddd">
+
+        <!-- Per-category rules section -->
+        <h2 style="font-size:1.1rem;margin-bottom:0.5rem">
+            <?php esc_html_e('Правила для конкретных рубрик', 'fastwp'); ?>
+        </h2>
+        <p style="max-width:680px;color:#555;margin-bottom:1.25rem">
+            <?php esc_html_e(
+                'Задайте уникальные H1, Title и Description для отдельных рубрик. '
+                . 'Если правило задано — оно имеет приоритет над общим шаблоном выше.',
+                'fastwp'
+            ); ?>
+        </p>
+
+        <?php if ($rules_notice === 'success') : ?>
+        <div class="notice notice-success is-dismissible" style="max-width:860px">
+            <p><?php esc_html_e('Сохранено.', 'fastwp'); ?></p>
+        </div>
+        <?php endif; ?>
+
+        <form method="post" style="max-width:860px">
+            <?php wp_nonce_field('kb_cat_seo_rules_save', 'kb_cat_rules_nonce'); ?>
+
+            <?php
+            // ---- existing per-category rules ----
+            if (!empty($cat_rules)) :
+                ?>
+            <div style="display:flex;flex-direction:column;gap:1rem;margin-bottom:1.5rem">
+                <?php foreach ($cat_rules as $tid => $rule) :
+                    $tid  = (int) $tid;
+                    $cat  = get_term($tid, 'category');
+                    $name = ($cat instanceof WP_Term) ? $cat->name : '#' . $tid;
+                ?>
+                <div class="postbox" style="padding:1rem 1.5rem;margin:0">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:0.75rem">
+                        <span style="background:#0073aa;color:#fff;padding:2px 12px;border-radius:3px;font-size:.9em;font-weight:600">
+                            <?php echo esc_html($name); ?>
+                        </span>
+                        <button type="submit" name="kb_remove_cat_rule" value="<?php echo esc_attr((string) $tid); ?>"
+                                class="button button-small"
+                                onclick="return confirm('<?php esc_attr_e('Удалить правило для этой рубрики?', 'fastwp'); ?>')">
+                            ✕
+                        </button>
+                    </div>
+                    <table style="width:100%;border-collapse:collapse">
+                        <?php foreach (['h1' => 'H1', 'title' => 'Title', 'desc' => 'Description'] as $f => $lbl) : ?>
+                        <tr>
+                            <td style="width:100px;padding:4px 10px 4px 0;vertical-align:top;color:#555;font-size:.9em">
+                                <?php echo esc_html($lbl); ?>
+                            </td>
+                            <td style="padding:4px 0">
+                                <?php if ($f === 'desc') : ?>
+                                <textarea name="kb_cat_rules[<?php echo esc_attr((string) $tid); ?>][desc]"
+                                          rows="2" class="large-text"><?php echo esc_textarea($rule['desc'] ?? ''); ?></textarea>
+                                <?php else : ?>
+                                <input type="text"
+                                       name="kb_cat_rules[<?php echo esc_attr((string) $tid); ?>][<?php echo esc_attr($f); ?>]"
+                                       value="<?php echo esc_attr($rule[$f] ?? ''); ?>"
+                                       class="large-text">
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </table>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php submit_button(__('Сохранить изменения', 'fastwp'), 'primary', 'kb_save_rules', false); ?>
+            <hr style="margin:1.5rem 0">
+            <?php endif; ?>
+
+            <?php
+            // ---- add new rule ----
+            $all_cats = get_terms(['taxonomy' => 'category', 'hide_empty' => false, 'orderby' => 'name']);
+            $all_cats = is_array($all_cats) ? $all_cats : [];
+            ?>
+            <h3 style="font-size:1rem;margin-bottom:0.75rem">
+                <?php esc_html_e('Новое правило', 'fastwp'); ?>
+            </h3>
+            <div style="border:1px solid #ddd;border-radius:4px;padding:1.25rem 1.5rem;background:#fafafa">
+                <table style="width:100%;border-collapse:collapse;margin-bottom:1rem">
+                    <tr>
+                        <td style="width:110px;padding:6px 10px 6px 0;vertical-align:middle;color:#555;font-size:.9em;font-weight:600">
+                            <?php esc_html_e('Рубрика', 'fastwp'); ?>
+                        </td>
+                        <td style="padding:6px 0">
+                            <select name="kb_new_cat_id" style="min-width:260px">
+                                <option value="">— <?php esc_html_e('выберите рубрику', 'fastwp'); ?> —</option>
+                                <?php foreach ($all_cats as $cat) :
+                                    // Skip categories that already have a rule
+                                    if (isset($cat_rules[(string) $cat->term_id])) continue;
+                                    $depth  = count(get_ancestors($cat->term_id, 'category'));
+                                    $indent = str_repeat('&nbsp;&nbsp;&nbsp;', $depth);
+                                ?>
+                                <option value="<?php echo esc_attr((string) $cat->term_id); ?>">
+                                    <?php echo $indent . esc_html($cat->name); ?>
+                                </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:4px 10px 4px 0;vertical-align:top;color:#555;font-size:.9em">H1</td>
+                        <td style="padding:4px 0">
+                            <input type="text" name="kb_new_cat_h1" class="large-text"
+                                   placeholder="<?php esc_attr_e('например: Смотреть %название_рубрики% онлайн', 'fastwp'); ?>">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:4px 10px 4px 0;vertical-align:top;color:#555;font-size:.9em">Title</td>
+                        <td style="padding:4px 0">
+                            <input type="text" name="kb_new_cat_title" class="large-text"
+                                   placeholder="<?php esc_attr_e('например: %название_рубрики% | %сайт%', 'fastwp'); ?>">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:4px 10px 4px 0;vertical-align:top;color:#555;font-size:.9em">Description</td>
+                        <td style="padding:4px 0">
+                            <textarea name="kb_new_cat_desc" rows="2" class="large-text"
+                                      placeholder="<?php esc_attr_e('Описание для данной рубрики', 'fastwp'); ?>"></textarea>
+                        </td>
+                    </tr>
+                </table>
+                <?php echo kb_cat_vars_reference_html(); ?>
+                <br>
+                <button type="submit" name="kb_add_cat_rule" class="button button-primary">
+                    + <?php esc_html_e('Добавить правило', 'fastwp'); ?>
+                </button>
+            </div>
         </form>
 
     </div>
@@ -403,6 +599,13 @@ function kb_cat_h1(WP_Term $term, array $filter_terms = []): string
         return $term->name . ' ' . $names;
     }
 
+    // 1. Settings-page per-category rule
+    $rule = kb_get_cat_seo_rule($term->term_id);
+    if ($rule['h1'] !== '') {
+        return kb_replace_cat_vars($rule['h1'], $term);
+    }
+
+    // 2. Category edit-form override → 3. Global template
     $custom = (string) get_term_meta($term->term_id, '_kb_cat_h1', true);
     $tpl    = $custom ?: (string) get_option('kb_cat_h1_tpl', '');
 
@@ -441,7 +644,13 @@ function kb_cat_seo_title(string $title): string
         return $term->name . ' ' . $names . ' — ' . get_bloginfo('name');
     }
 
-    // Per-category override takes priority over global template
+    // 1. Settings-page per-category rule
+    $rule = kb_get_cat_seo_rule($term->term_id);
+    if ($rule['title'] !== '') {
+        return kb_replace_cat_vars($rule['title'], $term);
+    }
+
+    // 2. Category edit-form override → 3. Global template
     $custom = (string) get_term_meta($term->term_id, '_kb_cat_seo_title', true);
     $tpl    = $custom ?: (string) get_option('kb_cat_seo_title_tpl', '');
 
@@ -476,6 +685,14 @@ function kb_cat_seo_description(): void
         return;
     }
 
+    // 1. Settings-page per-category rule
+    $rule = kb_get_cat_seo_rule($term->term_id);
+    if ($rule['desc'] !== '') {
+        echo '<meta name="description" content="' . esc_attr(kb_replace_cat_vars($rule['desc'], $term)) . '">' . "\n";
+        return;
+    }
+
+    // 2. Category edit-form override → 3. Global template
     $custom = (string) get_term_meta($term->term_id, '_kb_cat_seo_desc', true);
     $tpl    = $custom ?: (string) get_option('kb_cat_seo_desc_tpl', '');
 
