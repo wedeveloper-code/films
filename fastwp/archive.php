@@ -208,8 +208,19 @@ if ($is_cat) {
     <?php
     // Bottom description (set per-category in Рубрики → [название] → «Текст внизу страницы»)
     if ($is_cat) {
-        $bottom_desc = (string) get_term_meta($queried->term_id, 'kb_bottom_description', true);
-        if ($bottom_desc) : ?>
+        // On filter pages (/category/films/2023/) the queried object is the base category
+        // (films), not the filter term (2023). Check filter terms first, then base category.
+        $bottom_desc = '';
+        foreach ($kb_filter_terms as $ft) {
+            $bottom_desc = trim((string) get_term_meta($ft->term_id, 'kb_bottom_description', true));
+            if ($bottom_desc !== '') {
+                break;
+            }
+        }
+        if ($bottom_desc === '') {
+            $bottom_desc = trim((string) get_term_meta($queried->term_id, 'kb_bottom_description', true));
+        }
+        if ($bottom_desc !== '') : ?>
     <div class="archive-bottom-desc">
         <div class="container">
             <?php echo wp_kses_post($bottom_desc); ?>
