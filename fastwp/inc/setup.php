@@ -62,6 +62,44 @@ function fastwp_invalidate_movie_count(): void
     delete_transient('fastwp_movie_count');
 }
 
+/* ============================================================
+   One-time migration: copy theme_mods_kinobase → theme_mods_fastwp
+   Needed because renaming the theme folder changes the option key
+   WordPress uses to store Customizer settings and nav menu locations.
+   ============================================================ */
+
+add_action('init', 'fastwp_maybe_migrate_theme_mods', 1);
+
+function fastwp_maybe_migrate_theme_mods(): void
+{
+    if (get_option('fastwp_mods_migrated_v1')) {
+        return;
+    }
+
+    $old_mods = get_option('theme_mods_kinobase');
+    if ($old_mods) {
+        $new_mods = (array) get_option('theme_mods_fastwp', []);
+
+        // Copy keys not yet present in new mods
+        foreach ((array) $old_mods as $key => $val) {
+            if (!isset($new_mods[$key])) {
+                $new_mods[$key] = $val;
+            }
+        }
+
+        // Rename nav_menu_locations key: kinobase_filters → fastwp_filters
+        if (isset($new_mods['nav_menu_locations']['kinobase_filters'])) {
+            $new_mods['nav_menu_locations']['fastwp_filters'] =
+                $new_mods['nav_menu_locations']['kinobase_filters'];
+            unset($new_mods['nav_menu_locations']['kinobase_filters']);
+        }
+
+        update_option('theme_mods_fastwp', $new_mods);
+    }
+
+    update_option('fastwp_mods_migrated_v1', '1');
+}
+
 /**
  * Get cached total movie count
  */
