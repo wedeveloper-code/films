@@ -1,0 +1,236 @@
+<?php
+/**
+ * Front Page Template
+ *
+ * Displays 4 category blocks (Фильмы, Сериалы, Телепередачи, Новинки).
+ * Supports /{year}/ URL for year-filtered homepage via kb_home_year query var.
+ *
+ * @package FastWP
+ */
+
+get_header();
+
+// Pagination: front page uses 'page' query var (not 'paged')
+$home_paged = max(1, (int) (get_query_var('page') ?: get_query_var('paged') ?: 1));
+$home_per_page = 10; // cards per section per page
+
+// Year filter (set when URL is e.g. /2022/)
+$kb_home_year = sanitize_text_field(get_query_var('kb_home_year'));
+$year_term    = null;
+if ($kb_home_year) {
+    $t = get_term_by('slug', $kb_home_year, 'category');
+    if ($t && !is_wp_error($t)) {
+        $year_term = $t;
+    }
+}
+
+// Year terms for filter panel
+$year_parent = fastwp_get_year_parent();
+$home_years  = [];
+if ($year_parent) {
+    $r          = get_terms(['taxonomy' => 'category', 'parent' => $year_parent->term_id,
+                              'hide_empty' => true, 'orderby' => 'name', 'order' => 'DESC', 'number' => 20]);
+    $home_years = !is_wp_error($r) ? $r : [];
+}
+?>
+<main class="site-content" id="main" role="main">
+    <div class="container">
+
+        <!-- H1 + Filters -->
+        <?php
+        $has_filter_menu  = !empty(fastwp_get_filter_menu_data('fastwp_filters'));
+        $home_active_url  = ''; // No active URL on homepage (filter links go to category archives)
+        $home_reset_url   = $kb_home_year ? home_url('/') : '';
+        ?>
+        <div class="catalog-heading">
+            <div class="catalog-heading-row">
+                <div class="catalog-heading-left">
+                    <h1 class="catalog-title">
+                        <?php esc_html_e('Каталог видео', 'fastwp'); ?>
+                        <?php if ($kb_home_year) : ?>
+                        <span class="active-filter-tag">
+                            <?php echo esc_html($year_term ? $year_term->name : $kb_home_year); ?>
+                            <a href="<?php echo esc_url(home_url('/')); ?>" class="remove-filter">×</a>
+                        </span>
+                        <?php else : ?>
+                        <span class="catalog-count">
+                            <?php printf(
+                                esc_html__('— всего в базе %s видео', 'fastwp'),
+                                '<strong>' . number_format(fastwp_get_movie_count()) . '</strong>'
+                            ); ?>
+                        </span>
+                        <?php endif; ?>
+                    </h1>
+                </div>
+
+            </div><!-- .catalog-heading-row -->
+
+            <?php if ($has_filter_menu) : ?>
+            <!-- Filter bar — Год / Жанр / Качество -->
+            <div class="filter-bar">
+                <?php fastwp_render_desktop_filter_bar($home_active_url, $home_reset_url); ?>
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- Category blocks -->
+        <div class="content-blocks">
+            <?php
+            $sections = [
+                ['slug' => 'films',  'name' => 'Фильмы',       'label' => __('Фильмы', 'fastwp')],
+                ['slug' => 'series', 'name' => 'Сериалы',      'label' => __('Сериалы', 'fastwp')],
+                ['slug' => 'tv',     'name' => 'Телепередачи', 'label' => __('Телепередачи', 'fastwp')],
+                ['slug' => 'new',    'name' => 'Новинки',       'label' => __('Новинки', 'fastwp')],
+            ];
+
+            $block_index = 0;
+
+            foreach ($sections as $section) :
+                $label = $section['label'];
+                $cat   = get_category_by_slug($section['slug'])
+                      ?: get_term_by('name', $section['name'], 'category');
+                if (!$cat) continue;
+
+                $cat_link = $kb_home_year
+                    ? fastwp_filter_url($section['slug'], $kb_home_year)
+                    : get_category_link($cat->term_id);
+
+                // Build query args — offset for pagination, year tax_query when filtering
+                $query_args = [
+                    'post_type'               => ['post', 'movie'],
+                    'post_status'             => 'publish',
+                    'posts_per_page'          => $home_per_page,
+                    'offset'                  => ($home_paged - 1) * $home_per_page,
+                    'no_found_rows'           => false,
+                    'orderby'                 => 'date',
+                    'order'                   => 'DESC',
+                    'update_post_term_cache'  => false,
+                    'kb_rotate'               => true,
+                ];
+
+                if ($year_term) {
+                    $query_args['tax_query'] = [
+                        'relation' => 'AND',
+                        ['taxonomy' => 'category', 'field' => 'term_id', 'terms' => [(int) $cat->term_id]],
+                        ['taxonomy' => 'category', 'field' => 'term_id', 'terms' => [(int) $year_term->term_id]],
+                    ];
+                } else {
+                    $query_args['cat'] = $cat->term_id;
+                }
+
+                $query = new WP_Query($query_args);
+                // Track max pages across all sections for the pagination widget
+                $home_max_pages = max($home_max_pages ?? 1, (int) $query->max_num_pages);
+
+                if (!$query->have_posts()) continue;
+                ?>
+                <section class="category-section">
+                    <div class="section-header">
+                        <h2 class="section-title"><?php echo esc_html($label); ?></h2>
+                        <a href="<?php echo esc_url($cat_link); ?>" class="section-link">
+                            <?php esc_html_e('Смотреть все', 'fastwp'); ?> &rarr;
+                        </a>
+                    </div>
+
+                    <div class="movie-grid">
+                        <?php
+                        $card_index = 0;
+                        while ($query->have_posts()) :
+                            $query->the_post();
+                            get_template_part('template-parts/movie-card', null, [
+                                'is_first_block' => $block_index === 0,
+                                'card_index'     => $card_index,
+                            ]);
+                            $card_index++;
+                        endwhile;
+                        wp_reset_postdata();
+                        ?>
+                        <article class="movie-card card-goto">
+                            <a href="<?php echo esc_url($cat_link); ?>" class="card-goto-link">
+                                <div class="card-goto-inner">
+                                    <div class="card-goto-arrow">›</div>
+                                    <div class="card-goto-text">
+                                        <?php printf(
+                                            /* translators: %s: category name */
+                                            esc_html__('Смотреть все %s', 'fastwp'),
+                                            esc_html($label)
+                                        ); ?>
+                                    </div>
+                                </div>
+                            </a>
+                        </article>
+                    </div>
+                </section>
+                <?php
+                $block_index++;
+            endforeach;
+            ?>
+        </div>
+        <!-- /Category blocks -->
+
+        <?php
+        /* ---- Pagination ---- */
+        $home_max_pages = $home_max_pages ?? 1;
+        if ($home_max_pages > 1) :
+            $base = $kb_home_year ? home_url('/' . $kb_home_year . '/') : home_url('/');
+        ?>
+        <div class="pagination" style="margin-top:2rem">
+            <?php
+            echo paginate_links([
+                'base'      => $base . '%_%',
+                'format'    => 'page/%#%/',
+                'current'   => $home_paged,
+                'total'     => $home_max_pages,
+                'prev_text' => '&laquo;',
+                'next_text' => '&raquo;',
+            ]);
+            ?>
+        </div>
+
+        <?php if ($home_max_pages > 1) : ?>
+        <nav class="mobile-page-list" aria-label="<?php esc_attr_e('Страницы', 'fastwp'); ?>">
+            <?php if ($home_paged > 1) : ?>
+            <a href="<?php echo esc_url($home_paged === 2 ? $base : $base . 'page/' . ($home_paged - 1) . '/'); ?>"
+               class="mobile-page-num">&laquo;</a>
+            <?php endif; ?>
+            <?php
+            $links = paginate_links([
+                'base'      => $base . '%_%',
+                'format'    => 'page/%#%/',
+                'current'   => $home_paged,
+                'total'     => $home_max_pages,
+                'prev_text' => '',
+                'next_text' => '',
+                'type'      => 'array',
+                'end_size'  => 1,
+                'mid_size'  => 2,
+            ]);
+            if ($links) {
+                foreach ($links as $link) {
+                    $link = preg_replace('/class="([^"]*page-numbers current[^"]*)"/', 'class="mobile-page-num current"', $link);
+                    $link = preg_replace('/class="([^"]*page-numbers[^"]*)"/', 'class="mobile-page-num"', $link);
+                    echo $link;
+                }
+            }
+            ?>
+            <?php if ($home_paged < $home_max_pages) : ?>
+            <a href="<?php echo esc_url($base . 'page/' . ($home_paged + 1) . '/'); ?>"
+               class="mobile-page-num">&raquo;</a>
+            <?php endif; ?>
+        </nav>
+        <?php endif; ?>
+        <?php endif; ?>
+
+        <?php
+        /* ---- Homepage bottom text (Customizer → Главная страница) ---- */
+        $home_bottom = get_theme_mod('fastwp_home_bottom_text', '');
+        if ($home_bottom) :
+        ?>
+        <div class="archive-bottom-desc" style="margin-top:2.5rem">
+            <?php echo wp_kses_post($home_bottom); ?>
+        </div>
+        <?php endif; ?>
+
+    </div>
+</main>
+<?php get_footer(); ?>

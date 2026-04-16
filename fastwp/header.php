@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html <?php language_attributes(); ?> class="dark">
+<head>
+    <meta charset="<?php bloginfo('charset'); ?>">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <?php wp_head(); ?>
+    <script>
+    /* Apply theme BEFORE paint — prevents flash of wrong theme (FOUC) */
+    (function(){
+        var cfg = {
+            def:        '<?php echo esc_js((string) get_option('kb_default_theme', 'dark')); ?>',
+            autoTime:   <?php echo get_option('kb_theme_auto_time', '0') ? 'true' : 'false'; ?>,
+            darkFrom:   <?php echo (int) get_option('kb_theme_dark_from',  20); ?>,
+            lightFrom:  <?php echo (int) get_option('kb_theme_light_from', 8); ?>
+        };
+        var saved = localStorage.getItem('fastwp_theme');
+        var isDark;
+        if (saved) {
+            isDark = (saved === 'dark');
+        } else if (cfg.autoTime) {
+            var h = new Date().getHours();
+            var df = cfg.darkFrom, lf = cfg.lightFrom;
+            isDark = (df < lf) ? (h >= df && h < lf) : (h >= df || h < lf);
+        } else {
+            isDark = (cfg.def === 'dark');
+        }
+        document.documentElement.classList.toggle('dark', isDark);
+    })();
+    </script>
+</head>
+<body <?php body_class(); ?>>
+<?php wp_body_open(); ?>
+
+<div class="site-wrapper">
+
+<!-- Search Overlay -->
+<div id="search-overlay" class="search-overlay" role="dialog" aria-label="<?php esc_attr_e('Поиск', 'fastwp'); ?>">
+    <button id="search-close" class="search-close-btn" aria-label="<?php esc_attr_e('Закрыть поиск', 'fastwp'); ?>">✕</button>
+    <form class="search-form" role="search" method="get" action="<?php echo esc_url(home_url('/')); ?>">
+        <input
+            class="search-input"
+            type="search"
+            name="s"
+            placeholder="<?php esc_attr_e('Найти фильм, сериал…', 'fastwp'); ?>"
+            value="<?php echo esc_attr(get_search_query()); ?>"
+            autocomplete="off"
+        >
+        <button class="search-btn" type="submit"><?php esc_html_e('Найти', 'fastwp'); ?></button>
+    </form>
+</div>
+
+<!-- Site Header -->
+<header class="site-header" role="banner">
+    <div class="container header-inner">
+
+        <!-- Logo + Nav -->
+        <div style="display:flex;align-items:center;gap:2rem;min-width:0;">
+            <a href="<?php echo esc_url(home_url('/')); ?>" class="site-logo" aria-label="<?php bloginfo('name'); ?> — <?php esc_attr_e('На главную', 'fastwp'); ?>">
+                <span class="logo-brand">FAST</span><span class="logo-name">WP</span>
+            </a>
+
+            <nav class="nav-primary" id="nav-primary" role="navigation" aria-label="<?php esc_attr_e('Главное меню', 'fastwp'); ?>">
+                <?php
+                wp_nav_menu([
+                    'theme_location' => 'primary',
+                    'container'      => false,
+                    'menu_class'     => '',
+                    'items_wrap'     => '%3$s',
+                    'walker'         => new FastWP_Nav_Walker(),
+                    'fallback_cb'    => 'fastwp_fallback_menu',
+                ]);
+                ?>
+            </nav>
+        </div>
+
+        <!-- Header Actions -->
+        <div class="header-actions">
+            <!-- Search button -->
+            <button id="search-toggle" class="icon-btn" aria-label="<?php esc_attr_e('Поиск', 'fastwp'); ?>">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+            </button>
+
+            <!-- Settings dropdown -->
+            <div class="settings-menu" id="settings-menu">
+                <button class="icon-btn" aria-label="<?php esc_attr_e('Настройки', 'fastwp'); ?>" aria-haspopup="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                </button>
+
+                <div class="settings-dropdown">
+                    <div class="settings-dropdown-inner" role="menu">
+                        <a href="<?php echo esc_url(home_url('/favorites/')); ?>" class="dropdown-item" role="menuitem">
+                            <span><?php esc_html_e('Избранное', 'fastwp'); ?></span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:1rem;height:1rem;" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <?php if (is_user_logged_in()) : ?>
+                            <a href="<?php echo esc_url(wp_logout_url(home_url('/'))); ?>" class="dropdown-item" role="menuitem">
+                                <?php esc_html_e('Выйти', 'fastwp'); ?>
+                            </a>
+                            <a href="<?php echo esc_url(admin_url('profile.php')); ?>" class="dropdown-item" role="menuitem">
+                                <?php esc_html_e('Профиль', 'fastwp'); ?>
+                            </a>
+                        <?php else : ?>
+                            <a href="<?php echo esc_url(wp_login_url(home_url('/'))); ?>" class="dropdown-item" role="menuitem">
+                                <?php esc_html_e('Войти', 'fastwp'); ?>
+                            </a>
+                            <a href="<?php echo esc_url(wp_registration_url()); ?>" class="dropdown-item" role="menuitem">
+                                <?php esc_html_e('Регистрация', 'fastwp'); ?>
+                            </a>
+                        <?php endif; ?>
+                        <div class="dropdown-divider"></div>
+                        <button id="theme-toggle" class="dropdown-item" role="menuitem">
+                            <?php esc_html_e('Тема', 'fastwp'); ?>
+                            <span id="theme-icon" class="theme-icon">🌙</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Burger button (mobile only) -->
+            <button id="burger-btn" class="burger-btn" aria-label="<?php esc_attr_e('Меню', 'fastwp'); ?>" aria-expanded="false" aria-controls="mobile-nav">
+                <span class="burger-line"></span>
+                <span class="burger-line"></span>
+                <span class="burger-line"></span>
+            </button>
+        </div>
+
+    </div>
+</header>
+
+<!-- Mobile Navigation Drawer -->
+<nav id="mobile-nav" class="mobile-nav" aria-label="<?php esc_attr_e('Мобильное меню', 'fastwp'); ?>">
+    <?php
+    wp_nav_menu([
+        'theme_location' => 'primary',
+        'container'      => false,
+        'menu_class'     => 'mobile-nav-list',
+        'items_wrap'     => '<ul class="mobile-nav-list">%3$s</ul>',
+        'fallback_cb'    => 'fastwp_mobile_fallback_menu',
+    ]);
+    ?>
+</nav>
+<!-- /Mobile Navigation Drawer -->
