@@ -49,7 +49,7 @@ add_action('wp_head', 'fastwp_preload_font', 1);
 
 function fastwp_preload_font(): void
 {
-    $font_path = FASTWP_URI . '/assets/fonts/inter/inter-var.woff2';
+    $font_path = FASTWP_URI . '/assets/fonts/inter/InterVariable.woff2';
     echo '<link rel="preload" href="' . esc_url($font_path) . '" as="font" type="font/woff2" crossorigin>' . "\n";
 }
 
