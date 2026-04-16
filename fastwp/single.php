@@ -12,8 +12,6 @@ while (have_posts()) :
 
     $post_id      = get_the_ID();
     $title        = get_the_title();
-    $year         = (string) get_post_meta($post_id, 'movie_year', true);
-    $genre        = (string) get_post_meta($post_id, 'movie_genre', true);
     $duration     = (string) get_post_meta($post_id, 'movie_duration', true);
     $quality      = (string) get_post_meta($post_id, 'movie_quality', true);
     $translation  = (string) get_post_meta($post_id, 'movie_translation', true);

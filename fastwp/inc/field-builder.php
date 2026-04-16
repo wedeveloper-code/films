@@ -85,8 +85,8 @@ function fastwp_handle_add_field(): void
 
     $label = sanitize_text_field($_POST['field_label'] ?? '');
     $key   = sanitize_key($_POST['field_key']   ?? '');
-    $type  = in_array($_POST['field_type'] ?? '', ['text', 'number', 'textarea'], true)
-             ? $_POST['field_type'] : 'text';
+    $type  = in_array(sanitize_text_field($_POST['field_type'] ?? ''), ['text', 'number', 'textarea'], true)
+             ? sanitize_text_field($_POST['field_type']) : 'text';
 
     $redirect = admin_url('edit.php?post_type=movie&page=fastwp-fields');
 
