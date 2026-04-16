@@ -236,25 +236,6 @@ while (have_posts()) :
                         }
                     }
                     ?>
-                    <!-- Category blocks -->
-                    <?php if (!empty($main_cat_groups)) : ?>
-                    <div class="single-cat-coupon-row">
-                        <div class="single-cat-blocks">
-                            <?php foreach ($main_cat_groups as $group) : ?>
-                            <div class="single-cat-block">
-                                <span class="scb-label"><?php echo esc_html($group['parent']->name); ?></span>
-                                <div class="scb-values">
-                                    <?php foreach ($group['terms'] as $t) : ?>
-                                    <a href="<?php echo esc_url(get_category_link($t->term_id)); ?>"
-                                       class="smeta-cat-link"><?php echo esc_html($t->name); ?></a>
-                                    <?php endforeach; ?>
-                                </div>
-                            </div>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                    <?php endif; ?>
-
                     <?php
                     // Dynamic fields from Мета-боксы (field-builder)
                     $plain_rows = [];
@@ -269,10 +250,22 @@ while (have_posts()) :
                     if ($directors !== '') $plain_rows[__('Режиссёр', 'kinobase')] = $directors;
                     if ($actors !== '')    $plain_rows[__('Актёры',   'kinobase')] = $actors;
 
-                    if (!empty($plain_rows)) :
+                    if (!empty($main_cat_groups) || !empty($plain_rows)) :
                     ?>
                     <table class="single-meta-table">
                         <tbody>
+                        <?php foreach ($main_cat_groups as $group) :
+                            $links = [];
+                            foreach ($group['terms'] as $t) {
+                                $links[] = '<a href="' . esc_url(get_category_link($t->term_id))
+                                         . '" class="smeta-cat-link">' . esc_html($t->name) . '</a>';
+                            }
+                        ?>
+                        <tr>
+                            <td class="smeta-label"><?php echo esc_html($group['parent']->name); ?></td>
+                            <td class="smeta-value"><?php echo implode(', ', $links); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
                         <?php foreach ($plain_rows as $label => $value) : ?>
                         <tr>
                             <td class="smeta-label"><?php echo esc_html($label); ?></td>
