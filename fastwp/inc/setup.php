@@ -66,22 +66,37 @@ function fastwp_invalidate_movie_count(): void
    One-time migration: copy theme_mods_kinobase → theme_mods_fastwp
    Needed because renaming the theme folder changes the option key
    WordPress uses to store Customizer settings and nav menu locations.
+   v2: uses $wpdb directly for reliability, bypasses object cache.
    ============================================================ */
 
 add_action('init', 'fastwp_maybe_migrate_theme_mods', 1);
 
 function fastwp_maybe_migrate_theme_mods(): void
 {
-    if (get_option('fastwp_mods_migrated_v1')) {
+    if (get_option('fastwp_mods_migrated_v2')) {
         return;
     }
 
-    $old_mods = get_option('theme_mods_kinobase');
-    if ($old_mods) {
-        $new_mods = (array) get_option('theme_mods_fastwp', []);
+    global $wpdb;
 
-        // Copy keys not yet present in new mods
-        foreach ((array) $old_mods as $key => $val) {
+    // Read old mods directly from DB (bypass object cache)
+    $raw = $wpdb->get_var(
+        "SELECT option_value FROM {$wpdb->options} WHERE option_name = 'theme_mods_kinobase' LIMIT 1"
+    );
+    $old_mods = $raw ? maybe_unserialize($raw) : [];
+
+    if (!empty($old_mods) && is_array($old_mods)) {
+        // Read current fastwp mods directly from DB
+        $raw_new  = $wpdb->get_var(
+            "SELECT option_value FROM {$wpdb->options} WHERE option_name = 'theme_mods_fastwp' LIMIT 1"
+        );
+        $new_mods = ($raw_new ? maybe_unserialize($raw_new) : []) ?: [];
+        if (!is_array($new_mods)) {
+            $new_mods = [];
+        }
+
+        // Copy all keys not already present in the new mods
+        foreach ($old_mods as $key => $val) {
             if (!isset($new_mods[$key])) {
                 $new_mods[$key] = $val;
             }
@@ -94,10 +109,18 @@ function fastwp_maybe_migrate_theme_mods(): void
             unset($new_mods['nav_menu_locations']['kinobase_filters']);
         }
 
-        update_option('theme_mods_fastwp', $new_mods);
+        // Write directly to DB, then clear object + theme-mod caches
+        $wpdb->replace(
+            $wpdb->options,
+            ['option_name' => 'theme_mods_fastwp', 'option_value' => maybe_serialize($new_mods), 'autoload' => 'yes']
+        );
+        wp_cache_delete('theme_mods_fastwp', 'options');
+        wp_cache_delete('alloptions', 'options');
+        // Clear WP's internal theme-mod cache
+        unset($GLOBALS['_wp_theme_mods']);
     }
 
-    update_option('fastwp_mods_migrated_v1', '1');
+    update_option('fastwp_mods_migrated_v2', '1');
 }
 
 /**

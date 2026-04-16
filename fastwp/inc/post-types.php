@@ -203,11 +203,18 @@ function fastwp_get_filter_menu_data(string $location): ?array
         return $cache[$location];
     }
 
-    $locations = get_nav_menu_locations();
-    if (empty($locations[$location])) {
+    $all_locations = get_nav_menu_locations();
+
+    // Resolve menu ID: try the requested location first, then the legacy KinoBase name
+    $menu_id = (int) ($all_locations[$location] ?? 0);
+    if (!$menu_id && $location === 'fastwp_filters') {
+        $menu_id = (int) ($all_locations['kinobase_filters'] ?? 0);
+    }
+    if (!$menu_id) {
         return $cache[$location] = null;
     }
-    $items = wp_get_nav_menu_items((int) $locations[$location]);
+
+    $items = wp_get_nav_menu_items($menu_id);
     if (empty($items)) {
         return $cache[$location] = null;
     }
