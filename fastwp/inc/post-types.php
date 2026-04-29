@@ -4,8 +4,6 @@
  *
  * Registers:
  *  - movie      CPT (public, uses standard 'category' taxonomy)
- *  - actor      CPT (public, has archive at /actors/)
- *  - actor_attr taxonomy (hierarchical, on 'actor')
  *
  * Also provides filter-bar helper functions consumed by
  * archive.php and front-page.php.

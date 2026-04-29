@@ -5,7 +5,7 @@
  * Admin page (Фильмы → Мета-боксы) to add/remove custom fields
  * for the «Информация о фильме» meta-box without editing PHP.
  *
- * Fixed sections (галерея, цены, купон, актёры/режиссёры) are not affected.
+ * Fixed sections (галерея, цены, купон, рейтинг) are not affected.
  *
  * @package FastWP
  */
@@ -104,7 +104,7 @@ function fastwp_handle_add_field(): void
     $reserved = ['movie_gallery', 'movie_coupon', 'movie_views',
                  'movie_rent_1', 'movie_rent_3', 'movie_rent_5',
                  'movie_buy_week', 'movie_buy_month', 'movie_buy_forever',
-                 'movie_actors', 'movie_directors', 'movie_rating', 'movie_box_office'];
+                 'movie_rating'];
     if (in_array($key, $reserved, true)) {
         wp_redirect(add_query_arg('kberr', 'reserved', $redirect));
         exit;

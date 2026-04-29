@@ -15,10 +15,7 @@ while (have_posts()) :
     $duration     = (string) get_post_meta($post_id, 'movie_duration', true);
     $quality      = (string) get_post_meta($post_id, 'movie_quality', true);
     $translation  = (string) get_post_meta($post_id, 'movie_translation', true);
-    $actors       = (string) get_post_meta($post_id, 'movie_actors', true);
-    $directors    = (string) get_post_meta($post_id, 'movie_directors', true);
     $rating       = get_post_meta($post_id, 'movie_rating', true);
-    $box_office   = get_post_meta($post_id, 'movie_box_office', true);
     $views        = (int) get_post_meta($post_id, 'movie_views', true);
     $coupon       = (string) get_post_meta($post_id, 'movie_coupon', true);
 
@@ -244,10 +241,6 @@ while (have_posts()) :
                             $plain_rows[$f['label']] = $val;
                         }
                     }
-                    // Fixed: directors and actors
-                    if ($directors !== '') $plain_rows[__('Режиссёр', 'fastwp')] = $directors;
-                    if ($actors !== '')    $plain_rows[__('Актёры',   'fastwp')] = $actors;
-
                     if (!empty($main_cat_groups) || !empty($plain_rows)) :
                     ?>
                     <table class="single-meta-table">
@@ -272,53 +265,6 @@ while (have_posts()) :
                         <?php endforeach; ?>
                         </tbody>
                     </table>
-                    <?php endif; ?>
-
-                    <!-- Actor cast -->
-                    <?php
-                    $cast_ids = array_filter(array_map('intval', get_post_meta($post_id, '_movie_cast', false)));
-                    if (!empty($cast_ids)) :
-                    ?>
-                    <div class="single-cast">
-                        <h2 class="single-section-label"><?php esc_html_e('В ролях', 'fastwp'); ?></h2>
-                        <div class="cast-list">
-                            <?php foreach ($cast_ids as $actor_id) :
-                                $actor = get_post($actor_id);
-                                if (!$actor || $actor->post_status !== 'publish') continue;
-                                $actor_thumb = get_the_post_thumbnail_url($actor_id, 'thumbnail');
-                            ?>
-                            <a href="<?php echo esc_url(get_permalink($actor_id)); ?>" class="cast-chip">
-                                <?php if ($actor_thumb) : ?>
-                                <img src="<?php echo esc_url($actor_thumb); ?>"
-                                     alt="<?php echo esc_attr($actor->post_title); ?>"
-                                     loading="lazy">
-                                <?php endif; ?>
-                                <span><?php echo esc_html($actor->post_title); ?></span>
-                            </a>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                    <?php endif; ?>
-
-                    <!-- Box office -->
-                    <?php if (!empty($box_office) && is_array($box_office)) : ?>
-                    <div class="single-box-office">
-                        <h2 class="single-section-label"><?php esc_html_e('Кассовые сборы', 'fastwp'); ?></h2>
-                        <table class="single-meta-table">
-                            <tbody>
-                            <?php foreach ($box_office as $row) :
-                                $country = $row['country'] ?? '';
-                                $amount  = $row['amount']  ?? '';
-                                if (!$country && !$amount) continue;
-                            ?>
-                            <tr>
-                                <td class="smeta-label"><?php echo esc_html($country); ?></td>
-                                <td class="smeta-value"><?php echo esc_html($amount); ?></td>
-                            </tr>
-                            <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
                     <?php endif; ?>
 
                     <!-- Description -->

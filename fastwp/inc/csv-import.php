@@ -269,8 +269,6 @@ function fastwp_csv_process_row(array $row, bool $dry_run): array
 
     // --- Fixed meta fields ---
     $simple_meta = [
-        'movie_actors'      => sanitize_textarea_field($row['actors']      ?? ''),
-        'movie_directors'   => sanitize_textarea_field($row['directors']   ?? ''),
         'movie_coupon'      => sanitize_text_field($row['coupon']          ?? ''),
         'movie_rent_1'      => (int) ($row['rent_1']    ?? 0),
         'movie_rent_3'      => (int) ($row['rent_3']    ?? 0),
