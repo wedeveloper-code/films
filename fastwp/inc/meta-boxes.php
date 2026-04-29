@@ -54,7 +54,7 @@ function fastwp_register_meta_boxes(): void
     );
 
     add_meta_box(
-        'fastwp_coupon',
+        'fastwp_coupon_main',
         __('Купон на скидку', 'fastwp'),
         'fastwp_render_coupon_box',
         $post_types,
