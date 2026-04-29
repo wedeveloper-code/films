@@ -66,10 +66,14 @@ function fastwp_flush_on_movie_slug_change(mixed $old, mixed $new): void
     if ((string) $old === (string) $new) {
         return;
     }
-    // Re-register CPTs with the updated slug so flush_rewrite_rules()
-    // writes rules for the new slug, not the old one still in memory.
-    fastwp_register_post_types();
-    flush_rewrite_rules();
+    // Flush inside the same options.php request is unreliable: the CPT is
+    // already registered with the OLD slug in memory, and WordPress may cache
+    // the old permastruct. Instead, clear the stored rules from DB so that
+    // on the very next request (the settings-page redirect) WordPress
+    // regenerates them from scratch — at which point the CPT is registered
+    // fresh with the new slug. Also clear the one-time flush guard transient.
+    delete_option('rewrite_rules');
+    delete_transient('kb_filter_rewrites_v2');
 }
 
 /* ============================================================
