@@ -30,3 +30,5 @@ require_once FASTWP_DIR . '/inc/category-meta.php';
 require_once FASTWP_DIR . '/inc/auth.php';
 require_once FASTWP_DIR . '/inc/rotation.php';
 require_once FASTWP_DIR . '/inc/sitemap.php';
+require_once FASTWP_DIR . '/inc/settings.php';
+require_once FASTWP_DIR . '/inc/csv-import.php';
