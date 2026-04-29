@@ -36,9 +36,9 @@ function fastwp_register_meta_boxes(): void
     );
 
     add_meta_box(
-        'fastwp_additional',
-        __('Актёры, режиссёры, рейтинг, сборы', 'fastwp'),
-        'fastwp_render_additional_box',
+        'fastwp_rating',
+        __('Рейтинг', 'fastwp'),
+        'fastwp_render_rating_box',
         $post_types,
         'normal',
         'high'
@@ -58,7 +58,7 @@ function fastwp_register_meta_boxes(): void
         __('Купон на скидку', 'fastwp'),
         'fastwp_render_coupon_box',
         $post_types,
-        'side',
+        'normal',
         'default'
     );
 
@@ -146,17 +146,13 @@ function fastwp_render_gallery_box(WP_Post $post): void
 }
 
 /**
- * Additional info meta box (rating, actors, directors, box office)
+ * Rating meta box
  */
-function fastwp_render_additional_box(WP_Post $post): void
+function fastwp_render_rating_box(WP_Post $post): void
 {
-    $rating    = esc_attr((string) get_post_meta($post->ID, 'movie_rating', true));
-    $actors    = esc_textarea((string) get_post_meta($post->ID, 'movie_actors', true));
-    $directors = esc_textarea((string) get_post_meta($post->ID, 'movie_directors', true));
-    $box_raw   = get_post_meta($post->ID, 'movie_box_office', true);
-    $box_rows  = is_array($box_raw) ? $box_raw : [];
+    $rating = esc_attr((string) get_post_meta($post->ID, 'movie_rating', true));
     ?>
-    <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+    <table style="width:100%;border-collapse:collapse;">
         <tr>
             <td style="width:180px;padding:8px 12px 8px 0;font-weight:600;vertical-align:middle;">
                 <?php esc_html_e('Рейтинг (0–10)', 'fastwp'); ?>
@@ -166,61 +162,7 @@ function fastwp_render_additional_box(WP_Post $post): void
                        min="0" max="10" step="0.1" style="width:100px;" class="regular-text">
             </td>
         </tr>
-        <tr>
-            <td style="padding:8px 12px 8px 0;font-weight:600;vertical-align:top;">
-                <?php esc_html_e('Актёры (через запятую)', 'fastwp'); ?>
-            </td>
-            <td style="padding:4px 0;">
-                <textarea name="movie_actors" rows="3" style="width:100%;"><?php echo $actors; ?></textarea>
-            </td>
-        </tr>
-        <tr>
-            <td style="padding:8px 12px 8px 0;font-weight:600;vertical-align:top;">
-                <?php esc_html_e('Режиссёры (через запятую)', 'fastwp'); ?>
-            </td>
-            <td style="padding:4px 0;">
-                <textarea name="movie_directors" rows="2" style="width:100%;"><?php echo $directors; ?></textarea>
-            </td>
-        </tr>
     </table>
-
-    <h4 style="margin-bottom:10px;border-bottom:2px solid #ddd;padding-bottom:6px;">
-        <?php esc_html_e('Кассовые сборы (по странам)', 'fastwp'); ?>
-    </h4>
-    <div id="kb-box-office-rows">
-        <?php foreach ($box_rows as $i => $row) :
-            $country = esc_attr($row['country'] ?? '');
-            $amount  = esc_attr($row['amount']  ?? '');
-            ?>
-            <div class="kb-bo-row" style="display:flex;gap:8px;margin-bottom:6px;">
-                <input type="text" name="movie_box_office[<?php echo $i; ?>][country]"
-                       value="<?php echo $country; ?>" placeholder="Страна" style="width:180px;">
-                <input type="text" name="movie_box_office[<?php echo $i; ?>][amount]"
-                       value="<?php echo $amount; ?>" placeholder="Сумма ($100M)" style="flex:1;">
-                <button type="button" class="button button-small kb-bo-remove" style="color:#a00;">✕</button>
-            </div>
-        <?php endforeach; ?>
-    </div>
-    <button type="button" class="button" id="kb-bo-add" style="margin-top:4px;">
-        <?php esc_html_e('+ Добавить строку', 'fastwp'); ?>
-    </button>
-    <script>
-    jQuery(function($) {
-        var idx = <?php echo count($box_rows); ?>;
-        $('#kb-bo-add').on('click', function() {
-            var row = '<div class="kb-bo-row" style="display:flex;gap:8px;margin-bottom:6px;">'
-                + '<input type="text" name="movie_box_office['+idx+'][country]" placeholder="Страна" style="width:180px;">'
-                + '<input type="text" name="movie_box_office['+idx+'][amount]" placeholder="Сумма ($100M)" style="flex:1;">'
-                + '<button type="button" class="button button-small kb-bo-remove" style="color:#a00;">✕</button>'
-                + '</div>';
-            $('#kb-box-office-rows').append(row);
-            idx++;
-        });
-        $(document).on('click', '.kb-bo-remove', function() {
-            $(this).closest('.kb-bo-row').remove();
-        });
-    });
-    </script>
     <?php
 }
 
@@ -315,13 +257,20 @@ function fastwp_render_pricing_box(WP_Post $post): void
 function fastwp_render_coupon_box(WP_Post $post): void
 {
     $coupon = esc_attr((string) get_post_meta($post->ID, 'movie_coupon', true));
-    $views  = (int) get_post_meta($post->ID, 'movie_views', true);
-
-    echo '<p><strong>' . __('Код купона:', 'fastwp') . '</strong></p>';
-    echo '<input type="text" name="movie_coupon" value="' . $coupon
-        . '" style="width:100%;text-transform:uppercase;" placeholder="SUPER10">';
-    echo '<p style="margin-top:12px;"><strong>' . __('Просмотров карточки:', 'fastwp') . '</strong> '
-        . number_format($views) . '</p>';
+    ?>
+    <table style="width:100%;border-collapse:collapse;">
+        <tr>
+            <td style="width:180px;padding:8px 12px 8px 0;font-weight:600;vertical-align:middle;">
+                <?php esc_html_e('Код купона:', 'fastwp'); ?>
+            </td>
+            <td style="padding:4px 0;">
+                <input type="text" name="movie_coupon" value="<?php echo $coupon; ?>"
+                       style="width:100%;text-transform:uppercase;" class="regular-text"
+                       placeholder="SUPER10">
+            </td>
+        </tr>
+    </table>
+    <?php
 }
 
 /**
@@ -364,32 +313,11 @@ function fastwp_save_meta_boxes(int $post_id, WP_Post $post): void
         }
     }
 
-    // Textarea fields
-    $textarea_fields = ['movie_actors', 'movie_directors'];
-    foreach ($textarea_fields as $field) {
-        if (isset($_POST[$field])) {
-            update_post_meta($post_id, $field, sanitize_textarea_field($_POST[$field]));
-        }
-    }
-
     // Rating (float 0-10)
     if (isset($_POST['movie_rating'])) {
         $rating = (float) $_POST['movie_rating'];
         $rating = max(0.0, min(10.0, $rating));
         update_post_meta($post_id, 'movie_rating', round($rating, 1));
-    }
-
-    // Box office rows
-    if (isset($_POST['movie_box_office']) && is_array($_POST['movie_box_office'])) {
-        $rows = [];
-        foreach ($_POST['movie_box_office'] as $row) {
-            $country = sanitize_text_field($row['country'] ?? '');
-            $amount  = sanitize_text_field($row['amount']  ?? '');
-            if ($country !== '' || $amount !== '') {
-                $rows[] = ['country' => $country, 'amount' => $amount];
-            }
-        }
-        update_post_meta($post_id, 'movie_box_office', $rows);
     }
 
     // Price fields (integers)

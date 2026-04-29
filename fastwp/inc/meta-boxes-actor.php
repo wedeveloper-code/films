@@ -54,17 +54,6 @@ function fastwp_register_actor_meta_boxes(): void
         'low'
     );
 
-    // Cast picker on movie/post: choose actors
-    foreach (['movie', 'post'] as $type) {
-        add_meta_box(
-            'fastwp_movie_cast',
-            __('Актёры в фильме', 'fastwp'),
-            'fastwp_render_cast_box',
-            $type,
-            'normal',
-            'default'
-        );
-    }
 }
 
 /* ============================================================
