@@ -59,61 +59,6 @@ function fastwp_register_post_types(): void
         'capability_type' => 'post',
     ]);
 
-    /* ---------- ACTOR ----------------------------------------- */
-    register_post_type('actor', [
-        'labels' => [
-            'name'               => 'Актёры',
-            'singular_name'      => 'Актёр',
-            'menu_name'          => 'Актёры',
-            'add_new'            => 'Добавить актёра',
-            'add_new_item'       => 'Новый актёр',
-            'edit_item'          => 'Редактировать профиль',
-            'new_item'           => 'Новый актёр',
-            'view_item'          => 'Профиль актёра',
-            'search_items'       => 'Найти актёра',
-            'not_found'          => 'Актёры не найдены',
-            'not_found_in_trash' => 'Корзина пуста',
-            'all_items'          => 'Все актёры',
-        ],
-        'public'          => true,
-        'has_archive'     => 'actors',
-        'rewrite'         => ['slug' => 'actor', 'with_front' => false],
-        'supports'        => ['title', 'editor', 'thumbnail', 'excerpt'],
-        'show_in_rest'    => true,
-        'show_in_menu'    => true,
-        'menu_icon'       => 'dashicons-admin-users',
-        'menu_position'   => 6,
-        'capability_type' => 'post',
-    ]);
-
-    /* ---------- ACTOR ATTRIBUTES taxonomy ---------------------- */
-    // Hierarchical: parent = attribute TYPE (Гражданство, Родом из, Ярлыки…)
-    //               child  = attribute VALUE (Норвегия, Обладатель Оскара…)
-    register_taxonomy('actor_attr', 'actor', [
-        'labels' => [
-            'name'              => 'Атрибуты актёров',
-            'singular_name'     => 'Атрибут',
-            'menu_name'         => 'Атрибуты',
-            'all_items'         => 'Все атрибуты',
-            'parent_item'       => 'Группа',
-            'parent_item_colon' => 'Группа:',
-            'edit_item'         => 'Редактировать',
-            'update_item'       => 'Обновить',
-            'add_new_item'      => 'Добавить атрибут',
-            'new_item_name'     => 'Новый атрибут',
-            'search_items'      => 'Найти атрибут',
-        ],
-        'hierarchical'      => true,
-        'public'            => true,
-        'show_ui'           => true,
-        'show_in_rest'      => true,
-        'show_admin_column' => true,
-        'rewrite'           => [
-            'slug'         => 'actor-attr',
-            'hierarchical' => true,
-            'with_front'   => false,
-        ],
-    ]);
 }
 
 /* ============================================================

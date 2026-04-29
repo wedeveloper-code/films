@@ -22,7 +22,6 @@ require_once FASTWP_DIR . '/inc/setup.php';
 require_once FASTWP_DIR . '/inc/post-types.php';
 require_once FASTWP_DIR . '/inc/enqueue.php';
 require_once FASTWP_DIR . '/inc/meta-boxes.php';
-require_once FASTWP_DIR . '/inc/meta-boxes-actor.php';
 require_once FASTWP_DIR . '/inc/image-optimizer.php';
 require_once FASTWP_DIR . '/inc/ajax-handlers.php';
 require_once FASTWP_DIR . '/inc/field-builder.php';
