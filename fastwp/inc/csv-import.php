@@ -510,21 +510,81 @@ function fastwp_csv_import_page(): void
             <h2 style="margin-top:0;font-size:1rem">
                 <?php esc_html_e('Шаг 1 — Загрузите изображения на сервер', 'fastwp'); ?>
             </h2>
-            <p style="margin:0">
-                <?php esc_html_e('Загрузите изображения (постеры, кадры) через FTP в папку:', 'fastwp'); ?>
+            <p style="margin:0 0 0.75rem">
+                <?php esc_html_e('Загрузите постеры и кадры через FTP в специальную папку для импорта:', 'fastwp'); ?>
             </p>
-            <code style="display:block;margin:.5rem 0;padding:.5rem .75rem;background:#f0f0f0;border-radius:3px;font-size:.9em">
-                <?php echo esc_html($import_dir); ?>
-            </code>
-            <p style="margin:0;color:#555;font-size:.875em">
-                <?php esc_html_e('В CSV указывайте только имя файла, без пути. Пример: ', 'fastwp'); ?>
-                <code>film_poster.jpg</code>
-            </p>
-            <?php if (!is_writable($import_dir)) : ?>
-            <p style="color:#d63638;margin:.5rem 0 0">
-                ⚠ <?php esc_html_e('Папка недоступна для записи. Проверьте права доступа (chmod 755).', 'fastwp'); ?>
-            </p>
-            <?php endif; ?>
+
+            <table style="border-collapse:collapse;width:100%;max-width:720px">
+                <tr>
+                    <td style="width:130px;padding:6px 12px 6px 0;color:#555;font-size:.875em;vertical-align:top;white-space:nowrap">
+                        <?php esc_html_e('Путь на сервере:', 'fastwp'); ?>
+                    </td>
+                    <td style="padding:6px 0">
+                        <code style="display:block;padding:.4rem .75rem;background:#f0f0f0;border-radius:3px;font-size:.9em;word-break:break-all">
+                            <?php echo esc_html($import_dir); ?>
+                        </code>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:6px 12px 6px 0;color:#555;font-size:.875em;vertical-align:top;white-space:nowrap">
+                        <?php esc_html_e('Относительный путь:', 'fastwp'); ?>
+                    </td>
+                    <td style="padding:6px 0">
+                        <code style="display:block;padding:.4rem .75rem;background:#f0f0f0;border-radius:3px;font-size:.9em">
+                            wp-content/uploads/fastwp-import/
+                        </code>
+                        <span style="font-size:.8em;color:#555">
+                            <?php esc_html_e('(относительно корневой папки WordPress)', 'fastwp'); ?>
+                        </span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:6px 12px 6px 0;color:#555;font-size:.875em;vertical-align:top;white-space:nowrap">
+                        <?php esc_html_e('Файлов в папке:', 'fastwp'); ?>
+                    </td>
+                    <td style="padding:6px 0;font-size:.875em">
+                        <?php
+                        $image_count = 0;
+                        if (is_dir($import_dir)) {
+                            $image_count = count(glob($import_dir . '/*.{jpg,jpeg,png,gif,webp}', GLOB_BRACE) ?: []);
+                        }
+                        if ($image_count > 0) {
+                            echo '<span style="color:#00a32a;font-weight:600">✔ ' . $image_count . ' ' . esc_html__('изображений найдено', 'fastwp') . '</span>';
+                        } else {
+                            echo '<span style="color:#555">0 — ' . esc_html__('папка пуста', 'fastwp') . '</span>';
+                        }
+                        ?>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:6px 12px 6px 0;color:#555;font-size:.875em;vertical-align:top;white-space:nowrap">
+                        <?php esc_html_e('Права доступа:', 'fastwp'); ?>
+                    </td>
+                    <td style="padding:6px 0;font-size:.875em">
+                        <?php if (is_writable($import_dir)) : ?>
+                        <span style="color:#00a32a;font-weight:600">✔ <?php esc_html_e('Папка доступна для записи', 'fastwp'); ?></span>
+                        <?php else : ?>
+                        <span style="color:#d63638;font-weight:600">⚠ <?php esc_html_e('Нет прав на запись', 'fastwp'); ?></span>
+                        <code style="margin-left:.5rem;font-size:.85em">chmod 755 wp-content/uploads/fastwp-import</code>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+            </table>
+
+            <div style="margin-top:1rem;padding:.75rem 1rem;background:#e8f4fd;border-left:4px solid #0073aa;border-radius:0 3px 3px 0;max-width:720px">
+                <strong style="font-size:.875em"><?php esc_html_e('Как подключиться по FTP:', 'fastwp'); ?></strong>
+                <ol style="margin:.5rem 0 0;padding-left:1.25rem;font-size:.875em;color:#333">
+                    <li><?php esc_html_e('Откройте FTP-клиент (FileZilla, WinSCP и др.)', 'fastwp'); ?></li>
+                    <li><?php printf(
+                        esc_html__('Перейдите в папку: %s', 'fastwp'),
+                        '<code>wp-content/uploads/fastwp-import/</code>'
+                    ); ?></li>
+                    <li><?php esc_html_e('Загрузите все изображения (jpg, png, webp)', 'fastwp'); ?></li>
+                    <li><?php esc_html_e('В CSV-файле указывайте только имя файла без пути:', 'fastwp'); ?>
+                        <code>poster.jpg</code> &nbsp;—&nbsp; <?php esc_html_e('не', 'fastwp'); ?> <code>/uploads/fastwp-import/poster.jpg</code>
+                    </li>
+                </ol>
+            </div>
         </div>
 
         <!-- ===== STEP 2: Prepare CSV ===== -->
